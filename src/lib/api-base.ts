@@ -48,7 +48,7 @@ export function getApiBaseUrl() {
   if (explicitBaseUrl) {
     const normalizedExplicitBaseUrl = trimTrailingSlash(explicitBaseUrl);
 
-    if (__DEV__ || !isLocalApiBaseUrl(normalizedExplicitBaseUrl)) {
+    if (Platform.OS === 'web' || !isLocalApiBaseUrl(normalizedExplicitBaseUrl)) {
       return normalizedExplicitBaseUrl;
     }
   }

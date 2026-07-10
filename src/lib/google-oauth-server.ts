@@ -1,7 +1,7 @@
 import type { GoogleTokenResponse } from '@/lib/google-health';
 
 const DEFAULT_GOOGLE_CALLBACK_URI = 'https://avg-francesco-fitty.expo.app/api/google/callback';
-const DEFAULT_APP_RETURN_URI = 'fitty:/oauth';
+const DEFAULT_APP_RETURN_URI = 'fitty://oauth';
 const SESSION_TTL_MS = 2 * 60 * 1000;
 
 type OAuthStore = Map<string, { token: GoogleTokenResponse; expiresAt: number }>;
@@ -46,7 +46,20 @@ export function getConfiguredGoogleCallbackUri() {
 }
 
 export function getGoogleAppReturnUri() {
-  return process.env.EXPO_PUBLIC_GOOGLE_APP_RETURN_URI ?? process.env.GOOGLE_APP_RETURN_URI ?? DEFAULT_APP_RETURN_URI;
+  const returnUri =
+    process.env.EXPO_PUBLIC_GOOGLE_APP_RETURN_URI ??
+    process.env.GOOGLE_APP_RETURN_URI ??
+    DEFAULT_APP_RETURN_URI;
+
+  if (returnUri === 'fitty:/oauth') {
+    return 'fitty://oauth';
+  }
+
+  if (returnUri === 'com.francescooddo.fitty:/oauth') {
+    return 'com.francescooddo.fitty://oauth';
+  }
+
+  return returnUri;
 }
 
 export function storeGoogleOAuthSession(state: string, token: GoogleTokenResponse) {

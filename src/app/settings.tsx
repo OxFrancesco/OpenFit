@@ -1,4 +1,4 @@
-import { Stack, useRouter } from 'expo-router';
+import { Stack, useRouter, type Href } from 'expo-router';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
@@ -454,6 +454,36 @@ export default function SettingsScreen() {
           </Section>
         )}
 
+        <Section index={Platform.OS === 'ios' ? 4 : 3}>
+          <SectionHeader
+            title="Experimental"
+            trailing={
+              <TextButton
+                label="Open"
+                color={theme.text}
+                onPress={() => router.push('/fitbit-ble' as Href)}
+              />
+            }
+          />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Open Fitbit Bluetooth lab"
+            onPress={() => router.push('/fitbit-ble' as Href)}
+            style={({ pressed }) => [
+              styles.bluetoothCard,
+              { backgroundColor: theme.card },
+              pressed && styles.pressed,
+            ]}
+          >
+            <View style={styles.bluetoothCopy}>
+              <ThemedText type="smallBold">Fitbit Bluetooth</ThemedText>
+              <ThemedText type="small" style={{ color: theme.textSecondary }}>
+                Scan and inspect nearby Aria Air BLE services.
+              </ThemedText>
+            </View>
+          </Pressable>
+        </Section>
+
         <WidgetEditor
           visible={widgetEditorOpen}
           slots={prefs.widgetMetrics}
@@ -579,6 +609,14 @@ const styles = StyleSheet.create({
     padding: Spacing.three,
   },
   appleHealthCopy: {
+    gap: Spacing.half,
+  },
+  bluetoothCard: {
+    borderRadius: RADIUS,
+    borderCurve: 'continuous',
+    padding: Spacing.three,
+  },
+  bluetoothCopy: {
     gap: Spacing.half,
   },
   segments: {
