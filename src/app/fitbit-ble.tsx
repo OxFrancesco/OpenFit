@@ -1,10 +1,14 @@
-import { Stack } from 'expo-router';
+import { Redirect, Stack } from 'expo-router';
 
 import { FitbitBleLab } from '@/components/fitbit-ble-lab';
 import { useTheme } from '@/hooks/use-theme';
 
 export default function FitbitBleScreen() {
   const theme = useTheme();
+
+  if (!__DEV__) {
+    return <Redirect href="/settings" />;
+  }
 
   return (
     <>

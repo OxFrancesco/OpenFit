@@ -631,13 +631,11 @@ export default function HomeScreen() {
     >
       <ScrollView
         style={{ flex: 1, backgroundColor: theme.background }}
+        showsVerticalScrollIndicator={false}
         contentContainerStyle={[
           styles.scrollContent,
           {
-            paddingTop:
-              Platform.OS === 'android'
-                ? Spacing.four
-                : Math.max(Spacing.four, insets.top + Spacing.three),
+            paddingTop: Platform.OS === 'android' ? Spacing.four : Spacing.three,
             paddingBottom: Math.max(Spacing.six, insets.bottom + Spacing.six),
           },
         ]}
@@ -656,10 +654,11 @@ export default function HomeScreen() {
                     <Pressable
                       accessibilityRole="button"
                       accessibilityLabel="Settings"
-                      hitSlop={8}
+                      accessibilityHint="Opens app settings"
+                      hitSlop={12}
                       style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
                     >
-                      <MetricIcon icon="gearshape" glyph="⚙" size={24} color={theme.textSecondary} />
+                      <MetricIcon icon="gearshape" glyph="⚙" size={28} color={theme.textSecondary} />
                     </Pressable>
                   </Link>
                 </View>
@@ -1021,8 +1020,9 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   iconButton: {
-    width: 28,
-    height: 28,
+    width: 48,
+    height: 48,
+    marginVertical: -Spacing.two,
     alignItems: 'center',
     justifyContent: 'center',
   },
