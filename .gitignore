@@ -46,3 +46,9 @@ example
 
 # generated build output
 /build
+
+# codeview reference codebases
+resources/
+
+# local Cloudflare development state
+.wrangler/

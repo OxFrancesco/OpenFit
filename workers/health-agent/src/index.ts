@@ -1,7 +1,6 @@
 import { Agent, getAgentByName, routeAgentRequest } from "agents";
 
-import { decryptJson, encryptJson, signJson, stableHash, verifySignedJson } from "./crypto";
-import type { EncryptedJson } from "./crypto";
+import { decryptJson, encryptJson, signJson, stableHash, verifySignedJson, type EncryptedJson } from "./crypto";
 import {
   AGENT_GOOGLE_HEALTH_SCOPES,
   assertDataPointMatchesDataType,
@@ -92,6 +91,13 @@ type LedgerRow = {
   updated_at: string;
 };
 
+type CoachMessageRow = {
+  content: string;
+  created_at: string;
+  id: string;
+  role: "assistant" | "user";
+};
+
 type LedgerStatus =
   | "active"
   | "deleted"
@@ -115,6 +121,7 @@ type OAuthState = {
 const DEFAULT_AI_MODEL = "@cf/zai-org/glm-4.7-flash";
 const MAX_OAUTH_STATE_AGE_MS = 10 * 60 * 1000;
 const UNTRACKABLE_OPERATION_TIMEOUT_MS = 15 * 60 * 1000;
+const COACH_MESSAGE_RETENTION_MS = 90 * 24 * 60 * 60 * 1000;
 
 export class FittyHealthAgent extends Agent<AppEnv, HealthAgentState> {
   initialState: HealthAgentState = {};
@@ -140,6 +147,18 @@ export class FittyHealthAgent extends Agent<AppEnv, HealthAgentState> {
     this.sql`
       CREATE INDEX IF NOT EXISTS idx_owned_google_records_status
       ON owned_google_records (status)
+    `;
+    this.sql`
+      CREATE TABLE IF NOT EXISTS coach_messages (
+        id TEXT PRIMARY KEY,
+        role TEXT NOT NULL CHECK (role IN ('user', 'assistant')),
+        content TEXT NOT NULL,
+        created_at TEXT NOT NULL
+      )
+    `;
+    this.sql`
+      CREATE INDEX IF NOT EXISTS idx_coach_messages_created_at
+      ON coach_messages (created_at)
     `;
   }
 
@@ -179,6 +198,15 @@ export class FittyHealthAgent extends Agent<AppEnv, HealthAgentState> {
 
       if (request.method === "POST" && path === "/ask") {
         return jsonResponse(await this.answerQuestion(parseAskInput(await readJson(request))), request, this.env);
+      }
+
+      if (request.method === "GET" && path === "/messages") {
+        return jsonResponse({ messages: await this.listMessages() }, request, this.env);
+      }
+
+      if (request.method === "DELETE" && path === "/messages") {
+        this.sql`DELETE FROM coach_messages`;
+        return emptyResponse(request, this.env);
       }
 
       if (request.method === "POST" && path === "/snapshot") {
@@ -365,14 +393,17 @@ export class FittyHealthAgent extends Agent<AppEnv, HealthAgentState> {
 
     const days = clampDays(input.days, 30);
     const context = await fetchHealthContext(await this.getAccessToken(), { days });
+    const history = await this.listMessages(20);
+    const userMessage = await this.saveMessage("user", question);
     const model = this.env.AI_MODEL || DEFAULT_AI_MODEL;
     const result = await this.env.AI.run(model, {
       messages: [
         {
           content:
-            "You answer questions about the user's Google Health data. Use only the provided data. Be concise and quantitative. Do not diagnose, prescribe, or claim medical certainty. If the data is missing or an API call failed, say so clearly.",
+            "You are OpenFit's Personal Health-Data Coach. Help the user understand patterns in their own Google Health data and choose small, low-risk everyday actions. Use only the provided health data for health claims, be concise and quantitative, and make uncertainty explicit. Never diagnose, prescribe, change medication, recommend supplement doses, encourage aggressive calorie restriction, or claim medical certainty. If symptoms may be urgent, tell the user to seek qualified care. You may help clarify a nutrition description, but never claim that food was saved unless a verified app event says so. If data is missing or an API call failed, say so clearly.",
           role: "system"
         },
+        ...history.map((message) => ({ content: message.content, role: message.role })),
         {
           content: `Question: ${question}\n\nGoogle Health data JSON:\n${JSON.stringify(context).slice(0, 24000)}`,
           role: "user"
@@ -380,11 +411,88 @@ export class FittyHealthAgent extends Agent<AppEnv, HealthAgentState> {
       ]
     });
 
+    const answer = extractAiText(result);
+    const assistantMessage = await this.saveMessage("assistant", answer);
+
     return {
-      answer: extractAiText(result),
+      answer,
       dataWindow: context.range,
+      messages: [userMessage, assistantMessage],
       model
     };
+  }
+
+  private async listMessages(limit = 100): Promise<CoachMessageRow[]> {
+    this.purgeExpiredMessages();
+    const safeLimit = Math.max(1, Math.min(Math.round(limit), 200));
+    const messages = this.sql<CoachMessageRow>`
+      SELECT id, role, content, created_at
+      FROM (
+        SELECT id, role, content, created_at
+        FROM coach_messages
+        ORDER BY created_at DESC
+        LIMIT ${safeLimit}
+      )
+      ORDER BY created_at ASC
+    `;
+    return Promise.all(
+      messages.map(async (message) => ({
+        ...message,
+        content: await this.decryptMessageContent(message.content)
+      }))
+    );
+  }
+
+  private async saveMessage(role: CoachMessageRow["role"], content: string): Promise<CoachMessageRow> {
+    this.purgeExpiredMessages();
+    const message = {
+      content,
+      created_at: new Date().toISOString(),
+      id: crypto.randomUUID(),
+      role
+    };
+    const encryptedContent = JSON.stringify(await encryptJson({ content }, this.messageEncryptionKey()));
+    this.sql`
+      INSERT INTO coach_messages (id, role, content, created_at)
+      VALUES (${message.id}, ${message.role}, ${encryptedContent}, ${message.created_at})
+    `;
+    return message;
+  }
+
+  private purgeExpiredMessages(): void {
+    const cutoff = new Date(Date.now() - COACH_MESSAGE_RETENTION_MS).toISOString();
+    this.sql`DELETE FROM coach_messages WHERE created_at < ${cutoff}`;
+  }
+
+  private messageEncryptionKey(): string {
+    if (!this.env.TOKEN_ENCRYPTION_KEY) {
+      throw new HttpError(500, "TOKEN_ENCRYPTION_KEY is not configured");
+    }
+    return this.env.TOKEN_ENCRYPTION_KEY;
+  }
+
+  private async decryptMessageContent(stored: string): Promise<string> {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(stored);
+    } catch {
+      return stored;
+    }
+
+    if (
+      !isRecord(parsed) ||
+      parsed.version !== 1 ||
+      typeof parsed.ciphertext !== "string" ||
+      typeof parsed.iv !== "string"
+    ) {
+      return stored;
+    }
+
+    const decrypted = await decryptJson(parsed as EncryptedJson, this.messageEncryptionKey());
+    if (!isRecord(decrypted) || typeof decrypted.content !== "string") {
+      throw new HttpError(500, "Stored coach message is invalid");
+    }
+    return decrypted.content;
   }
 
   private async snapshot(input: SnapshotInput): Promise<Record<string, unknown>> {

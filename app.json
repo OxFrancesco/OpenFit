@@ -513,7 +513,9 @@
           "neverForLocation": true,
           "bluetoothAlwaysPermission": "OpenFit uses Bluetooth to connect to your Fitbit Aria Air and read measurements you choose to sync."
         }
-      ]
+      ],
+      "expo-audio",
+      "expo-asset"
     ],
     "experiments": {
       "typedRoutes": true,

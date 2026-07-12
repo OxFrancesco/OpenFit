@@ -89,7 +89,17 @@ export function getApiBaseUrl() {
 export async function fetchApiJson<T>(path: string, init?: RequestInit) {
   const response = await fetch(`${getApiBaseUrl()}${path}`, init);
   const text = await response.text();
-  const data = text ? JSON.parse(text) : null;
+  let data: any = null;
+
+  if (text) {
+    try {
+      data = JSON.parse(text);
+    } catch {
+      if (response.ok) {
+        throw new Error('The API returned an invalid response.');
+      }
+    }
+  }
 
   if (!response.ok) {
     const message =

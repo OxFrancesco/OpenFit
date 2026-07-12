@@ -6,6 +6,8 @@
     "@expo/ui": "~56.0.21",
     "@shopify/react-native-skia": "2.6.2",
     "expo": "~56.0.15",
+    "expo-asset": "~56.0.19",
+    "expo-audio": "~56.0.12",
     "expo-auth-session": "~56.0.15",
     "expo-background-task": "~56.0.21",
     "expo-build-properties": "~56.0.22",

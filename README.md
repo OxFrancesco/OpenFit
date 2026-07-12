@@ -95,6 +95,13 @@ Create `.env.local` in the project root:
 ```bash
 GOOGLE_CLIENT_ID=your-web-client-id.apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=your-web-client-secret
+
+# Server-only bridge to the per-user Cloudflare health agent.
+HEALTH_AGENT_URL=https://openfit-health-agent.your-subdomain.workers.dev
+HEALTH_AGENT_API_TOKEN=use-the-same-secret-configured-on-the-worker
+
+# Server-only; enables Voice Nutrition Logs.
+ELEVENLABS_API_KEY=your-elevenlabs-api-key
 ```
 
 Optional values for native or deployed builds:
@@ -113,7 +120,7 @@ EXPO_PUBLIC_GOOGLE_APP_RETURN_URI=fitty:/oauth
 EXPO_PUBLIC_DEBUG=1
 ```
 
-When deploying the API routes, set the same OAuth values in the hosting environment. `.env.local` is only for local development.
+When deploying the API routes, set the same OAuth, health-agent, and ElevenLabs values in the hosting environment. `.env.local` is only for local development. Never expose the health-agent token or ElevenLabs key through an `EXPO_PUBLIC_` variable.
 
 ## google oauth setup
 

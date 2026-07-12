@@ -7,6 +7,7 @@ Cloudflare Worker Agent for interacting with Google Health API data through a pe
 - Runtime: Cloudflare Workers + Agents SDK + SQLite Durable Objects.
 - Auth: bearer token for API calls, OAuth 2.0 for Google Health consent.
 - Google tokens: refresh tokens are AES-GCM encrypted before being stored in agent state.
+- Coach messages: AES-GCM encrypted at rest, retained for up to 90 days, and user-deletable.
 - Writes: every created data point gets an app-owned Google data point name and a SQLite ledger row.
 - Deletes: only active records in the app-owned ledger can be deleted.
 
@@ -77,6 +78,8 @@ Useful endpoints:
 
 - `GET /status`
 - `POST /ask` with `{ "question": "How did my sleep trend this month?", "days": 30 }`
+- `GET /messages` to restore the user's coach conversation
+- `DELETE /messages` to erase the user's coach conversation
 - `POST /snapshot` with `{ "days": 30 }`
 - `POST /data-points/list`
 - `POST /data-points/rollup`

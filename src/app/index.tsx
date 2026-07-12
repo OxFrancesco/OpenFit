@@ -650,6 +650,17 @@ export default function HomeScreen() {
                   {todayStr}
                 </ThemedText>
                 <View style={styles.headerButtons}>
+                  <Link href="/coach" asChild>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="Health coach"
+                      accessibilityHint="Opens your personal health-data coach"
+                      hitSlop={12}
+                      style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
+                    >
+                      <MetricIcon icon="heart.text.square.fill" glyph="♥" size={28} color={theme.text} />
+                    </Pressable>
+                  </Link>
                   <Link href="/settings" asChild>
                     <Pressable
                       accessibilityRole="button"
