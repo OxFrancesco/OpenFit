@@ -1,6 +1,6 @@
 # OpenFit Privacy Policy Draft
 
-Effective date: `TODO_EFFECTIVE_DATE`
+Effective date: July 12, 2026
 
 This draft must be reviewed and hosted before store submission. Replace all TODO values before publishing.
 
@@ -42,6 +42,23 @@ On native platforms, OpenFit stores OAuth tokens and app preferences in local se
 
 OpenFit server routes may process OAuth authorization codes and token refresh requests so the app can connect to Google. Before publishing, verify that the deployed hosting environment does not persist OAuth tokens, request bodies, or health data in logs.
 
+## How We Protect Your Data
+
+OpenFit encrypts data in transit using HTTPS/TLS when communicating with Google APIs and OpenFit server routes. OAuth client secrets are kept on the server and are not included in the app. On iOS and Android, OAuth tokens are stored using the operating system's protected Keychain or Keystore through Expo SecureStore. Access is limited to the app features that need the data.
+
+OpenFit does not maintain a server-side database of your Google Health records. During sign-in, the server temporarily holds the OAuth result in memory for no more than two minutes so the app can retrieve it. The result is deleted immediately after retrieval or when that two-minute period expires. Health data is fetched from Google when needed and processed for the dashboard, widgets, and user-requested Apple Health export.
+
+On the web, OAuth tokens and preferences are stored in browser local storage and are protected by the browser's same-origin controls and the security of your browser and device. Do not use OpenFit on a shared or untrusted device, and sign out when finished. No method of storage or transmission is completely secure, but we use reasonable technical and organizational safeguards to prevent unauthorized access, alteration, disclosure, or destruction.
+
+## Data Retention and Deletion
+
+- OAuth tokens remain on your device or in your browser until you sign out, the tokens expire or are revoked, you clear the app or browser data, or you uninstall the app.
+- Google Health dashboard data is held in an in-memory cache only while the app is running. Widget summaries and Apple Health sync ledger entries remain locally until they are replaced, cleared by the app, or removed when you clear app data or uninstall OpenFit.
+- Dashboard and widget preferences remain locally until you clear app or browser data or uninstall OpenFit.
+- The temporary server-side OAuth callback session is deleted after retrieval and always expires within two minutes. OpenFit does not retain Google Health records in a server-side user database.
+
+To delete locally stored Google user data, sign out of OpenFit and clear the app's data or uninstall it. On the web, sign out and clear site data for OpenFit in your browser. You can also revoke OpenFit's access from your Google Account permissions. To request help with deletion or receive confirmation about data associated with your use of OpenFit, contact `TODO_SUPPORT_EMAIL`.
+
 ## Sharing
 
 OpenFit uses Google APIs for sign-in, token exchange, token refresh, and Google Health data access. On iOS, OpenFit uses Apple Health only when you grant permission and start the export.
@@ -50,7 +67,7 @@ We do not sell personal data. We do not use health data for advertising.
 
 ## Your Choices
 
-You can revoke Google access from your Google account settings. You can revoke Apple Health permissions in the iOS Health app or iOS Settings. You can remove local OpenFit data by signing out in the app and deleting the app from your device.
+You can revoke Google access from your Google account settings. You can revoke Apple Health permissions in the iOS Health app or iOS Settings. Signing out removes stored Google OAuth tokens and clears current health summaries from the app and widgets.
 
 ## Children
 
