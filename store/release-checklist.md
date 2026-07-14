@@ -1,6 +1,6 @@
 # OpenFit Store Release Checklist
 
-Generated: 2026-06-26
+Updated: 2026-07-14
 
 ## App Identity
 
@@ -46,7 +46,7 @@ Generated: 2026-06-26
 - Public support URL.
 - Public privacy policy URL.
 - App Review contact first name, last name, email, and phone.
-- Apple demo account or review instructions for a Google Health test account.
+- A dedicated Google Health reviewer account that meets `docs/google-oauth-verification-remediation.md`; provide its credentials only through the store's secure review field.
 - Screenshots for required App Store and Google Play device classes.
 - App Store age rating answers, especially health/wellness and medical-information fields.
 - Apple content rights declaration.
@@ -57,36 +57,39 @@ Generated: 2026-06-26
 ## Recommended Publish Sequence
 
 1. Freeze the release branch and run local lint/tests.
-2. Host the support and privacy policy pages from `store/legal`.
-3. Generate store screenshots from the production build, not from Expo Go.
-4. Build Android production AAB:
+2. Complete the scope, Console, test-account, video, and email gates in `docs/google-oauth-verification-remediation.md`.
+3. Host the support and privacy policy pages from `store/legal`.
+4. Generate store screenshots from the production build, not from Expo Go.
+5. Build Android production AAB:
 
 ```bash
 bunx eas-cli@latest build --platform android --profile production
 ```
 
-5. Create the Google Play app with package `com.francescooddo.fitty`.
-6. Upload the first Android AAB manually in Play Console if the API has not been used for this app before.
-7. Configure Play Console service account access for EAS Submit.
-8. Submit Android to internal testing first:
+6. Create the Google Play app with package `com.francescooddo.fitty`.
+7. Upload the first Android AAB manually in Play Console if the API has not been used for this app before.
+8. Configure Play Console service account access for EAS Submit.
+9. Submit Android to internal testing first:
 
 ```bash
 bunx eas-cli@latest submit --platform android --profile production --latest
 ```
 
-9. Complete App Store Connect metadata, attach build `6` or a newer build, and rerun:
+10. Complete App Store Connect metadata, attach build `6` or a newer build, and rerun:
 
 ```bash
 asc validate --app 6779281959 --platform IOS --output table
 asc review doctor --app 6779281959 --output table
 ```
 
-10. Submit iOS for App Review only after validation is clean and App Privacy has been confirmed in the App Store Connect UI.
-11. Promote Google Play from internal testing to closed/open/production only after Data safety and Health apps declarations are accepted.
+11. Submit iOS for App Review only after validation is clean and App Privacy has been confirmed in the App Store Connect UI.
+12. Promote Google Play from internal testing to closed/open/production only after Data safety and Health apps declarations are accepted.
 
 ## Submission Guardrails
 
 - Do not mark the app as medical advice, diagnosis, or treatment.
 - Do not claim two-way health sync. The current Apple Health flow is Google Health to Apple Health only.
+- Do not submit Google OAuth verification until the runtime and Google Cloud Data Access scopes match the six-scope contract in `docs/google-oauth-verification-remediation.md`.
+- Do not place reviewer credentials in repository files, store notes, email, or demonstration videos; use the secure review field.
 - Do not declare that no data is collected until the deployed API hosting logs and OAuth token handling are verified.
 - Do not submit to production review until screenshot, privacy, support, age rating, and data safety inputs are complete.

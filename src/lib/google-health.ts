@@ -8,24 +8,6 @@ import {
   type MetricDef,
 } from '@/lib/metric-catalog';
 
-export const GOOGLE_OAUTH_DISCOVERY = {
-  authorizationEndpoint: 'https://accounts.google.com/o/oauth2/v2/auth',
-  tokenEndpoint: 'https://oauth2.googleapis.com/token',
-  revocationEndpoint: 'https://oauth2.googleapis.com/revoke',
-  userInfoEndpoint: 'https://openidconnect.googleapis.com/v1/userinfo',
-};
-
-export const GOOGLE_HEALTH_SCOPES = [
-  'openid',
-  'profile',
-  'email',
-  'https://www.googleapis.com/auth/googlehealth.activity_and_fitness.readonly',
-  'https://www.googleapis.com/auth/googlehealth.profile.readonly',
-  'https://www.googleapis.com/auth/googlehealth.sleep.readonly',
-  'https://www.googleapis.com/auth/googlehealth.health_metrics_and_measurements.readonly',
-  'https://www.googleapis.com/auth/googlehealth.nutrition.readonly',
-];
-
 const GOOGLE_HEALTH_BASE_URL = 'https://health.googleapis.com/v4';
 
 export type GoogleHealthConfig = {
@@ -77,8 +59,6 @@ export type SleepSummary = {
 };
 
 export type HealthSnapshot = {
-  identity: Record<string, unknown> | null;
-  profile: Record<string, unknown> | null;
   metrics: HealthMetric[];
   exercises: ExerciseSummary[];
   /** Sleep sessions in the range, most recent first */
@@ -88,8 +68,6 @@ export type HealthSnapshot = {
     rollups: Record<string, unknown>;
     exercises: unknown;
     sleep: unknown;
-    identity: unknown;
-    profile: unknown;
   };
 };
 
@@ -546,11 +524,9 @@ export async function fetchGoogleHealthSnapshot(
   const exerciseFilter = `exercise.interval.civil_start_time >= "${toIsoDate(start)}" AND exercise.interval.civil_start_time < "${toIsoDate(end)}"`;
   const sleepFilter = `sleep.interval.civil_end_time >= "${toIsoDate(start)}" AND sleep.interval.civil_end_time < "${toIsoDate(end)}"`;
 
-  const [{ metrics, raw: rollups }, identity, profile, exerciseData, sleepData] =
+  const [{ metrics, raw: rollups }, exerciseData, sleepData] =
     await Promise.all([
       fetchHealthMetrics(accessToken, metricIds, days),
-      googleHealthFetch<Record<string, unknown>>(accessToken, '/users/me/identity').catch(() => null),
-      googleHealthFetch<Record<string, unknown>>(accessToken, '/users/me/profile').catch(() => null),
       googleHealthFetch<{ dataPoints?: DataPoint[] }>(
         accessToken,
         `/users/me/dataTypes/exercise/dataPoints?page_size=50&filter=${encodeURIComponent(exerciseFilter)}`
@@ -565,8 +541,6 @@ export async function fetchGoogleHealthSnapshot(
   const sleepPoints = 'dataPoints' in sleepData ? sleepData.dataPoints ?? [] : [];
 
   return {
-    identity,
-    profile,
     metrics,
     exercises: exercisePoints.map(normalizeExercise),
     sleepSessions: sleepPoints
@@ -578,8 +552,6 @@ export async function fetchGoogleHealthSnapshot(
       rollups,
       exercises: exerciseData,
       sleep: sleepData,
-      identity,
-      profile,
     },
   };
 }

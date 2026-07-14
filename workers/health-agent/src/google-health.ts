@@ -1,29 +1,9 @@
-import { HttpError } from "./http";
-
 export const GOOGLE_HEALTH_BASE_URL = "https://health.googleapis.com/v4";
 export const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 
-export const AGENT_GOOGLE_HEALTH_SCOPES = [
-  "openid",
-  "profile",
-  "email",
-  "https://www.googleapis.com/auth/googlehealth.activity_and_fitness.readonly",
-  "https://www.googleapis.com/auth/googlehealth.profile.readonly",
-  "https://www.googleapis.com/auth/googlehealth.sleep.readonly",
-  "https://www.googleapis.com/auth/googlehealth.health_metrics_and_measurements.readonly",
-  "https://www.googleapis.com/auth/googlehealth.nutrition.readonly",
-  "https://www.googleapis.com/auth/googlehealth.location.readonly",
-  "https://www.googleapis.com/auth/googlehealth.activity_and_fitness.writeonly",
-  "https://www.googleapis.com/auth/googlehealth.sleep.writeonly",
-  "https://www.googleapis.com/auth/googlehealth.health_metrics_and_measurements.writeonly",
-  "https://www.googleapis.com/auth/googlehealth.nutrition.writeonly",
-  "https://www.googleapis.com/auth/googlehealth.location.writeonly"
-];
-
-export type GoogleOAuthEnv = {
+export type GoogleTokenEnv = {
   GOOGLE_CLIENT_ID: string;
   GOOGLE_CLIENT_SECRET: string;
-  GOOGLE_REDIRECT_URI: string;
 };
 
 export type GoogleTokenResponse = {
@@ -43,63 +23,6 @@ export type ListDataPointsResponse = {
   nextPageToken?: string;
 };
 
-export type Operation = {
-  done?: boolean;
-  error?: unknown;
-  metadata?: Record<string, unknown>;
-  name?: string;
-  response?: Record<string, unknown>;
-};
-
-export type WeightDataPointInput = {
-  clientRecordId?: string;
-  measuredAt?: string;
-  notes?: string;
-  utcOffset?: string;
-  weightGrams?: number;
-  weightKg?: number;
-};
-
-export type StepsDataPointInput = {
-  clientRecordId?: string;
-  count: number;
-  endTime: string;
-  endUtcOffset?: string;
-  startTime: string;
-  startUtcOffset?: string;
-};
-
-export type SleepDataPointInput = {
-  clientRecordId?: string;
-  endTime: string;
-  endUtcOffset?: string;
-  stages?: Array<{
-    endTime: string;
-    endUtcOffset?: string;
-    startTime: string;
-    startUtcOffset?: string;
-    type: string;
-  }>;
-  startTime: string;
-  startUtcOffset?: string;
-  type?: "CLASSIC" | "STAGES" | "SLEEP_TYPE_UNSPECIFIED";
-};
-
-export type ExerciseDataPointInput = {
-  activeDurationSeconds?: number;
-  caloriesKcal?: number;
-  clientRecordId?: string;
-  displayName: string;
-  distanceMeters?: number;
-  endTime: string;
-  endUtcOffset?: string;
-  exerciseType?: string;
-  notes?: string;
-  startTime: string;
-  startUtcOffset?: string;
-  steps?: number;
-};
-
 export class GoogleHealthApiError extends Error {
   readonly details?: unknown;
   readonly status: number;
@@ -112,20 +35,8 @@ export class GoogleHealthApiError extends Error {
   }
 }
 
-export async function exchangeGoogleCode(env: GoogleOAuthEnv, code: string): Promise<GoogleTokenResponse> {
-  const body = new URLSearchParams({
-    client_id: env.GOOGLE_CLIENT_ID,
-    client_secret: env.GOOGLE_CLIENT_SECRET,
-    code,
-    grant_type: "authorization_code",
-    redirect_uri: env.GOOGLE_REDIRECT_URI
-  });
-
-  return googleTokenFetch(body);
-}
-
 export async function refreshGoogleAccessToken(
-  env: GoogleOAuthEnv,
+  env: GoogleTokenEnv,
   refreshToken: string
 ): Promise<GoogleTokenResponse> {
   const body = new URLSearchParams({
@@ -229,51 +140,6 @@ export async function rollUpDataPoints(
   );
 }
 
-export async function createDataPoint(
-  accessToken: string,
-  dataType: string,
-  dataPoint: GoogleHealthDataPoint
-): Promise<Operation> {
-  assertDataPointMatchesDataType(dataType, dataPoint);
-
-  return parseOperation(
-    await googleHealthFetch(accessToken, `users/me/dataTypes/${dataType}/dataPoints`, {
-      body: JSON.stringify(dataPoint),
-      method: "POST"
-    })
-  );
-}
-
-export async function patchDataPoint(
-  accessToken: string,
-  name: string,
-  dataPoint: GoogleHealthDataPoint
-): Promise<Operation> {
-  return parseOperation(
-    await googleHealthFetch(accessToken, name, {
-      body: JSON.stringify({ ...dataPoint, name }),
-      method: "PATCH"
-    })
-  );
-}
-
-export async function batchDeleteDataPoints(
-  accessToken: string,
-  dataType: string,
-  names: string[]
-): Promise<Operation> {
-  return parseOperation(
-    await googleHealthFetch(accessToken, `users/me/dataTypes/${dataType}/dataPoints:batchDelete`, {
-      body: JSON.stringify({ names }),
-      method: "POST"
-    })
-  );
-}
-
-export async function getOperation(accessToken: string, name: string): Promise<Operation> {
-  return parseOperation(await googleHealthFetch(accessToken, name));
-}
-
 export async function fetchHealthContext(
   accessToken: string,
   options: {
@@ -332,144 +198,6 @@ export async function fetchHealthContext(
   };
 }
 
-export function buildWeightDataPoint(input: WeightDataPointInput): GoogleHealthDataPoint {
-  const measuredAt = input.measuredAt ?? new Date().toISOString();
-  const weightGrams = input.weightGrams ?? (typeof input.weightKg === "number" ? input.weightKg * 1000 : undefined);
-  if (typeof weightGrams !== "number" || !Number.isFinite(weightGrams) || weightGrams <= 0) {
-    throw new HttpError(400, "weightKg or weightGrams must be a positive number");
-  }
-
-  return {
-    weight: {
-      notes: input.notes,
-      sampleTime: {
-        physicalTime: toIso(measuredAt),
-        utcOffset: input.utcOffset ?? utcOffsetDurationFromIso(measuredAt)
-      },
-      weightGrams
-    }
-  };
-}
-
-export function buildStepsDataPoint(input: StepsDataPointInput): GoogleHealthDataPoint {
-  if (!Number.isInteger(input.count) || input.count < 0) {
-    throw new HttpError(400, "count must be a non-negative integer");
-  }
-
-  return {
-    steps: {
-      count: String(input.count),
-      interval: observationInterval(input)
-    }
-  };
-}
-
-export function buildSleepDataPoint(input: SleepDataPointInput): GoogleHealthDataPoint {
-  return {
-    sleep: {
-      interval: sessionInterval(input),
-      stages: input.stages?.map((stage) => ({
-        endTime: toIso(stage.endTime),
-        endUtcOffset: stage.endUtcOffset ?? utcOffsetDurationFromIso(stage.endTime),
-        startTime: toIso(stage.startTime),
-        startUtcOffset: stage.startUtcOffset ?? utcOffsetDurationFromIso(stage.startTime),
-        type: stage.type
-      })),
-      type: input.type ?? (input.stages?.length ? "STAGES" : "CLASSIC")
-    }
-  };
-}
-
-export function buildExerciseDataPoint(input: ExerciseDataPointInput): GoogleHealthDataPoint {
-  if (!input.displayName.trim()) {
-    throw new HttpError(400, "displayName is required");
-  }
-
-  const metricsSummary: Record<string, unknown> = {};
-  if (typeof input.caloriesKcal === "number") {
-    metricsSummary.caloriesKcal = input.caloriesKcal;
-  }
-  if (typeof input.distanceMeters === "number") {
-    metricsSummary.distanceMillimeters = Math.round(input.distanceMeters * 1000);
-  }
-  if (Number.isInteger(input.steps)) {
-    metricsSummary.steps = String(input.steps);
-  }
-
-  return {
-    exercise: {
-      activeDuration:
-        typeof input.activeDurationSeconds === "number" ? `${Math.max(0, Math.round(input.activeDurationSeconds))}s` : undefined,
-      displayName: input.displayName,
-      exerciseType: input.exerciseType ?? "OTHER",
-      interval: sessionInterval(input),
-      metricsSummary,
-      notes: input.notes
-    }
-  };
-}
-
-export function dataPointName(dataType: string, dataPointId: string): string {
-  return `users/me/dataTypes/${dataType}/dataPoints/${dataPointId}`;
-}
-
-export function dataTypeToUnionField(dataType: string): string {
-  return dataType.replace(/-([a-z0-9])/g, (_match, character: string) => character.toUpperCase());
-}
-
-export function assertDataPointMatchesDataType(dataType: string, dataPoint: GoogleHealthDataPoint): void {
-  const field = dataTypeToUnionField(dataType);
-  if (!(field in dataPoint)) {
-    throw new HttpError(400, `Data point for ${dataType} must include the ${field} field`);
-  }
-}
-
-export function toIso(value: string): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    throw new HttpError(400, `Invalid RFC 3339 timestamp: ${value}`);
-  }
-  return date.toISOString();
-}
-
-export function utcOffsetDurationFromIso(value: string): string {
-  if (value.endsWith("Z")) {
-    return "0s";
-  }
-
-  const match = value.match(/([+-])(\d{2}):?(\d{2})$/);
-  if (!match) {
-    return "0s";
-  }
-
-  const sign = match[1] === "-" ? -1 : 1;
-  const seconds = sign * (Number(match[2]) * 60 * 60 + Number(match[3]) * 60);
-  return `${seconds}s`;
-}
-
-function observationInterval(input: {
-  endTime: string;
-  endUtcOffset?: string;
-  startTime: string;
-  startUtcOffset?: string;
-}): Record<string, unknown> {
-  return {
-    endTime: toIso(input.endTime),
-    endUtcOffset: input.endUtcOffset ?? utcOffsetDurationFromIso(input.endTime),
-    startTime: toIso(input.startTime),
-    startUtcOffset: input.startUtcOffset ?? utcOffsetDurationFromIso(input.startTime)
-  };
-}
-
-function sessionInterval(input: {
-  endTime: string;
-  endUtcOffset?: string;
-  startTime: string;
-  startUtcOffset?: string;
-}): Record<string, unknown> {
-  return observationInterval(input);
-}
-
 async function googleTokenFetch(body: URLSearchParams): Promise<GoogleTokenResponse> {
   const response = await fetch(GOOGLE_TOKEN_URL, {
     body,
@@ -517,30 +245,6 @@ async function googleError(response: Response): Promise<GoogleHealthApiError> {
   }
 
   return new GoogleHealthApiError(response.status, message, details);
-}
-
-function parseOperation(value: unknown): Operation {
-  const operation = requireJsonObject(value, "Google Health operation response");
-  if (operation.done !== undefined && typeof operation.done !== "boolean") {
-    throw new GoogleHealthApiError(502, "Google Health returned an invalid operation status", operation);
-  }
-  if (operation.name !== undefined && typeof operation.name !== "string") {
-    throw new GoogleHealthApiError(502, "Google Health returned an invalid operation name", operation);
-  }
-  if (operation.metadata !== undefined && !isJsonObject(operation.metadata)) {
-    throw new GoogleHealthApiError(502, "Google Health returned invalid operation metadata", operation);
-  }
-  if (operation.response !== undefined && !isJsonObject(operation.response)) {
-    throw new GoogleHealthApiError(502, "Google Health returned an invalid operation response", operation);
-  }
-
-  return {
-    done: operation.done,
-    error: operation.error,
-    metadata: operation.metadata,
-    name: operation.name,
-    response: operation.response
-  };
 }
 
 function requireJsonObject(value: unknown, context: string): Record<string, unknown> {

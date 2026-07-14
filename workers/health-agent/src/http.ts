@@ -108,7 +108,7 @@ export function withCors(response: Response, request: Request, env: CorsEnv): Re
   }
 
   headers.set("Access-Control-Allow-Headers", "Authorization, Content-Type, X-Fitty-Internal-Token");
-  headers.set("Access-Control-Allow-Methods", "DELETE, GET, OPTIONS, PATCH, POST");
+  headers.set("Access-Control-Allow-Methods", "DELETE, GET, OPTIONS, POST");
   headers.set("Access-Control-Max-Age", "86400");
 
   return new Response(response.body, {
@@ -116,15 +116,6 @@ export function withCors(response: Response, request: Request, env: CorsEnv): Re
     status: response.status,
     statusText: response.statusText
   });
-}
-
-export function isAllowedReturnTo(returnTo: string, allowedOrigins: string | undefined): boolean {
-  const allowed = parseAllowedOrigins(allowedOrigins);
-  if (allowed.includes("*")) {
-    return true;
-  }
-
-  return allowed.some((candidate) => returnTo === candidate || returnTo.startsWith(`${candidate}?`));
 }
 
 function allowedCorsOrigin(origin: string | null, allowedOrigins: string | undefined): string | undefined {

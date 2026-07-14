@@ -1,4 +1,4 @@
-import { GOOGLE_HEALTH_SCOPES } from '@/lib/google-health';
+import { GOOGLE_HEALTH_SCOPES } from '@/lib/google-oauth-request';
 import {
   getConfiguredGoogleCallbackUri,
   getGoogleAppReturnUri,

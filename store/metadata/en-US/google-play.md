@@ -56,10 +56,11 @@ Do not submit this section until deployed API logging and token handling are ver
 
 Based on the current source:
 
-- Google account data may include email/profile identifiers from Google sign-in.
-- Health and fitness data is fetched from Google Health APIs to display metrics and widgets.
+- Google account data includes the stable Google subject and basic profile name used for account connection and the personalized greeting. The app does not request email access.
+- Health and fitness data is fetched from Google Health APIs to display metrics and widgets and, when requested, provide Personal Health-Data Coach context.
 - OAuth tokens are stored locally on device using SecureStore on native platforms and localStorage on web.
 - Dashboard preferences, widget data, cached health snapshots, and Apple Health sync ledger entries are stored locally.
+- Cloudflare stores encrypted Google refresh tokens used by the Personal Health-Data Coach and encrypted coach messages, and processes personalized responses. ElevenLabs transcribes user-started voice recordings.
 - Server API routes exchange and refresh OAuth tokens with Google. Verify hosting logs do not retain OAuth request bodies, tokens, or health data.
 - Health data is not intentionally sold or shared for advertising.
 - Apple Health export is user initiated and writes only supported weight, sleep, and workout records on iOS.

@@ -573,8 +573,13 @@ export default function HomeScreen() {
           <View style={styles.signInDisclosureBlock}>
             <ThemedText type="small" style={[styles.signInDisclosure, { color: theme.textSecondary }]}>
               OpenFit reads the Google Health data you authorize to show your personal dashboard,
-              widgets, and optional Apple Health export. OpenFit does not sell Google Health data or
-              share it with advertisers.
+              widgets, and optional Apple Health export. If you use the Personal Health-Data Coach,
+              OpenFit processes relevant health data and your questions using Cloudflare AI services.
+            </ThemedText>
+            <ThemedText type="small" style={[styles.signInDisclosure, { color: theme.textSecondary }]}>
+              The coach stores an encrypted Google refresh token for its connection. Encrypted coach
+              messages are retained for up to 90 days. Voice recordings are sent to ElevenLabs for
+              transcription. OpenFit does not sell Google Health data or share it with advertisers.
             </ThemedText>
             <View style={styles.legalLinks}>
               {LEGAL_LINKS.map((link) => (

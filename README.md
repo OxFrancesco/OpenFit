@@ -2,15 +2,16 @@
 
 OpenFit is an Expo and React Native app for people who want a clearer view of their Google Health data across iOS, Android, and web. The repository name is `fitty`, but the installed app name in `app.json` is `OpenFit`.
 
-The app signs in with Google, reads Google Health API data, and turns it into a configurable health dashboard. It can show activity, sleep, heart, body, and nutrition metrics; keep home-screen widgets in sync; and, on iOS, manually export selected Google Health records into Apple Health.
+The app signs in with Google, reads Google Health API data, and turns it into a configurable health dashboard and Personal Health-Data Coach. It can show activity, sleep, heart, body, and nutrition metrics; keep home-screen widgets in sync; and, on iOS, manually export selected Google Health records into Apple Health.
 
 ## what the app does
 
-OpenFit is built around four pieces:
+OpenFit is built around five pieces:
 
 - A Google Health dashboard with date ranges for today, 7 days, 14 days, 30 days, and 90 days.
 - Configurable rings, cards, and widget metric slots, so the user can decide which metrics matter on the dashboard and on the home screen.
 - Native widgets for iOS and Android that show the latest synced metric values outside the app.
+- A Personal Health-Data Coach that answers user questions using relevant authorized Google Health context and keeps encrypted conversation history across devices.
 - An iOS-only Apple Health export that writes Google Health weight, sleep, and workout records to HealthKit after the user starts the sync.
 
 The app requests read-only Google scopes. It does not write data back to Google Health. The Apple Health flow is one-way:
@@ -24,7 +25,8 @@ That export is intentionally limited. It supports weight, sleep, and workouts be
 ## main features
 
 - Google sign-in through OAuth, using the app's Expo Router API routes for config, callback, token exchange, and token refresh.
-- Google Health reads for activity and fitness, profile, sleep, health metrics and measurements, and nutrition.
+- Google Health read-only access for activity and fitness, sleep, health metrics and measurements, and nutrition.
+- A per-user Cloudflare health agent with encrypted refresh-token and coach-message storage.
 - Metric catalog for steps, calories, distance, floors, elevation, sedentary time, swim strokes, VO2, heart rate, HRV, oxygen saturation, respiratory rate, body metrics, nutrition, hydration, and sleep.
 - Dashboard customization for ring metrics, goals, and visible metric cards.
 - Snapshot caching so the dashboard can show recent data quickly while it refreshes.

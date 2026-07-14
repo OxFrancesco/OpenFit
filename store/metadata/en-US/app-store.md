@@ -60,12 +60,12 @@ OpenFit signs in with Google to read Google Health API data using read-only scop
 The app does not provide medical advice, diagnosis, or treatment. The Apple Health export is one-way from Google Health to Apple Health and is user initiated.
 
 Reviewer setup:
-1. Use a Google account with access to Google Health API data, or use the demo account provided in App Review credentials.
+1. Use the dedicated Google Health test account supplied only through the secure App Review credentials field.
 2. Sign in with Google from the first screen.
-3. Grant requested Google Health scopes.
+3. Expand the consent details and grant the requested read-only Google Health scopes.
 4. To test Apple Health export, open Settings and start the Apple Health sync on a physical iOS device with HealthKit available.
 
-TODO: Add demo account credentials or exact reviewer steps before submission.
+Internal submission owner: follow `docs/google-oauth-verification-remediation.md` for test-account requirements and the complete reviewer navigation. Never paste credentials into this metadata draft.
 ```
 
 ## Age Rating Draft
@@ -84,8 +84,8 @@ Owner confirmation is required before entering these answers in App Store Connec
 
 Confirm in App Store Connect before publishing.
 
-- Data linked to the user: Google account identifiers such as email/profile may be used for account connection.
+- Data linked to the user: the stable Google account subject and basic profile name may be used for account connection and the personalized greeting. The app does not request email access.
 - Health and fitness data: Google Health data is fetched to display the dashboard and widgets; selected records can be written to Apple Health on iOS after user action.
 - Tokens and preferences: OAuth tokens, dashboard preferences, widget data, and sync ledger entries are stored locally using platform storage.
-- Third-party sharing: Google APIs are used for sign-in, token exchange, refresh, and health data access. Apple Health is used only when the user enables iOS export.
+- Service processing: Google APIs provide sign-in and health data access; Cloudflare stores encrypted Google refresh tokens used by the Personal Health-Data Coach and encrypted coach messages, and processes personalized responses; ElevenLabs transcribes user-started voice recordings; Apple Health is used only when the user enables iOS export.
 - Tracking: `No`, unless analytics, advertising, or cross-app tracking SDKs are added.

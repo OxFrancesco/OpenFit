@@ -7,15 +7,6 @@ export type EncryptedJson = {
 const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder();
 
-export function base64UrlEncode(bytes: Uint8Array): string {
-  return base64Encode(bytes).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
-}
-
-export function base64UrlDecode(value: string): Uint8Array {
-  const padded = value.replaceAll("-", "+").replaceAll("_", "/").padEnd(Math.ceil(value.length / 4) * 4, "=");
-  return base64Decode(padded);
-}
-
 function base64Encode(bytes: Uint8Array): string {
   let binary = "";
   for (const byte of bytes) {
@@ -53,13 +44,6 @@ async function getAesKey(secret: string): Promise<CryptoKey> {
   return crypto.subtle.importKey("raw", toArrayBuffer(keyBytes), "AES-GCM", false, ["encrypt", "decrypt"]);
 }
 
-async function getHmacKey(secret: string): Promise<CryptoKey> {
-  return crypto.subtle.importKey("raw", textEncoder.encode(secret), { hash: "SHA-256", name: "HMAC" }, false, [
-    "sign",
-    "verify"
-  ]);
-}
-
 export async function encryptJson(value: unknown, secret: string): Promise<EncryptedJson> {
   const key = await getAesKey(secret);
   const iv = crypto.getRandomValues(new Uint8Array(12));
@@ -88,47 +72,6 @@ export async function decryptJson(encrypted: EncryptedJson, secret: string): Pro
   return JSON.parse(textDecoder.decode(plaintext));
 }
 
-export async function signJson(payload: Record<string, unknown>, secret: string): Promise<string> {
-  const body = base64UrlEncode(textEncoder.encode(JSON.stringify(payload)));
-  const key = await getHmacKey(secret);
-  const signature = await crypto.subtle.sign("HMAC", key, textEncoder.encode(body));
-  return `${body}.${base64UrlEncode(new Uint8Array(signature))}`;
-}
-
-export async function verifySignedJson(
-  token: string,
-  secret: string,
-  maxAgeMs: number
-): Promise<Record<string, unknown>> {
-  const [body, signature] = token.split(".");
-  if (!body || !signature) {
-    throw new Error("Malformed signed payload");
-  }
-
-  const key = await getHmacKey(secret);
-  const expected = await crypto.subtle.sign("HMAC", key, textEncoder.encode(body));
-  const expectedSignature = base64UrlEncode(new Uint8Array(expected));
-  if (!(await secureEqual(signature, expectedSignature))) {
-    throw new Error("Invalid signed payload");
-  }
-
-  const decoded: unknown = JSON.parse(textDecoder.decode(base64UrlDecode(body)));
-  if (!isRecord(decoded)) {
-    throw new Error("Signed payload must be a JSON object");
-  }
-  const payload = decoded;
-  const createdAt = payload.createdAt;
-  if (typeof createdAt !== "number" || Date.now() - createdAt > maxAgeMs) {
-    throw new Error("Expired signed payload");
-  }
-
-  return payload;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
 export async function secureEqual(left: string | undefined, right: string | undefined): Promise<boolean> {
   if (!left || !right) {
     return false;
@@ -148,11 +91,6 @@ export async function secureEqual(left: string | undefined, right: string | unde
   }
 
   return diff === 0;
-}
-
-export async function stableHash(value: string): Promise<string> {
-  const digest = await crypto.subtle.digest("SHA-256", textEncoder.encode(value));
-  return base64UrlEncode(new Uint8Array(digest)).toLowerCase().replace(/[^a-z0-9-]/g, "").slice(0, 40);
 }
 
 function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {

@@ -103,8 +103,6 @@ function buildSnapshot(days: number): HealthSnapshot {
   ];
 
   return {
-    identity: { fixture: true },
-    profile: { displayName: 'Android Tester' },
     metrics,
     exercises: [
       {
@@ -125,8 +123,6 @@ function buildSnapshot(days: number): HealthSnapshot {
       rollups: {},
       exercises: {},
       sleep: {},
-      identity: {},
-      profile: {},
     },
   };
 }

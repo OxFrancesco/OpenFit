@@ -9,7 +9,7 @@ import {
 
 export default function PrivacyPolicyScreen() {
   return (
-    <LegalPage title="OpenFit Privacy Policy" updated="July 12, 2026">
+    <LegalPage title="OpenFit Privacy Policy" updated="July 14, 2026">
       <LegalSection title="Who We Are">
         <LegalParagraph>
           OpenFit is provided by {OPENFIT_PROVIDER}. For privacy or support questions, contact{' '}
@@ -20,8 +20,12 @@ export default function PrivacyPolicyScreen() {
       <LegalSection title="What OpenFit Does">
         <LegalParagraph>
           OpenFit signs in with Google, reads Google Health data with your permission, and displays
-          that data in a configurable dashboard and home-screen widgets. On iOS, OpenFit can export
-          selected Google Health records into Apple Health when you start that sync.
+          that data in a configurable dashboard and home-screen widgets.
+        </LegalParagraph>
+        <LegalParagraph>
+          The Personal Health-Data Coach uses your questions and relevant Google Health data to help
+          you understand your wellness information. On iOS, OpenFit can export selected records to
+          Apple Health when you start that sync.
         </LegalParagraph>
         <LegalParagraph>
           OpenFit is a personal wellness utility. It does not provide medical advice, diagnosis, or
@@ -31,14 +35,17 @@ export default function PrivacyPolicyScreen() {
 
       <LegalSection title="Data We Access">
         <LegalBullet>
-          Google account information needed for sign-in, such as your email address and profile
-          information.
+          Your stable Google account identifier and basic profile name, which are needed for
+          sign-in, account connection, and the personalized greeting.
         </LegalBullet>
         <LegalBullet>
-          Google Health data you authorize, including activity, sleep, profile, health metrics and
+          Google Health data you authorize, including activity, sleep, health metrics and
           measurements, and nutrition data.
         </LegalBullet>
         <LegalBullet>Dashboard preferences, widget preferences, cached summaries, and sync status.</LegalBullet>
+        <LegalBullet>
+          Questions, messages, and voice recordings you submit when using the Personal Health-Data Coach.
+        </LegalBullet>
         <LegalBullet>
           On iOS, Apple Health permissions and Apple Health write results for records you choose to
           export.
@@ -51,6 +58,14 @@ export default function PrivacyPolicyScreen() {
         <LegalBullet>Display your dashboard, cards, rings, and widgets.</LegalBullet>
         <LegalBullet>Save your preferences.</LegalBullet>
         <LegalBullet>
+          Process your questions and relevant Google Health data through our Cloudflare-based
+          Personal Health-Data Coach to generate responses.
+        </LegalBullet>
+        <LegalBullet>
+          Send voice recordings to ElevenLabs for speech-to-text transcription before submitting
+          the resulting text to the coach.
+        </LegalBullet>
+        <LegalBullet>
           Export supported Google Health weight, sleep, and workout records to Apple Health on iOS
           when you start the export.
         </LegalBullet>
@@ -61,44 +76,59 @@ export default function PrivacyPolicyScreen() {
         <LegalParagraph>
           On native platforms, OpenFit stores OAuth tokens and app preferences in local secure
           platform storage. Widget data, cached summaries, and Apple Health sync ledger entries are
-          stored locally on your device. On web, token and preference data may be stored in browser
-          storage.
+          stored locally on your device.
+        </LegalParagraph>
+        <LegalParagraph>
+          On web, OAuth tokens and preferences may be stored in browser storage.
         </LegalParagraph>
         <LegalParagraph>
           OpenFit server routes process OAuth authorization codes and token refresh requests so the
-          app can connect to Google. OpenFit does not use health data for advertising.
+          app can connect to Google.
+        </LegalParagraph>
+        <LegalParagraph>
+          When you use the coach, OpenFit stores an encrypted Google refresh token on Cloudflare so
+          the coach can access authorized data when answering your questions.
+        </LegalParagraph>
+        <LegalParagraph>
+          Coach messages are encrypted at rest and retained for up to 90 days unless you delete the
+          conversation sooner.
         </LegalParagraph>
       </LegalSection>
 
       <LegalSection title="How We Protect Your Data">
         <LegalParagraph>
           OpenFit encrypts data in transit using HTTPS/TLS when communicating with Google APIs and
-          OpenFit server routes. OAuth client secrets are kept on the server and are not included
-          in the app. On iOS and Android, OAuth tokens are stored using the operating system&apos;s
-          protected Keychain or Keystore through Expo SecureStore. Access is limited to the app
-          features that need the data.
+          OpenFit server routes. OAuth client secrets are kept on the server and are not included in
+          the app.
         </LegalParagraph>
         <LegalParagraph>
-          OpenFit does not maintain a server-side database of your Google Health records. During
-          sign-in, the server temporarily holds the OAuth result in memory for no more than two
-          minutes so the app can retrieve it. The result is deleted immediately after retrieval or
-          when that two-minute period expires. Health data is fetched from Google when needed and
-          processed for the dashboard, widgets, and user-requested Apple Health export.
+          On iOS and Android, OAuth tokens are stored using the operating system&apos;s protected
+          Keychain or Keystore through Expo SecureStore. Coach refresh tokens and messages are
+          encrypted at rest on Cloudflare.
+        </LegalParagraph>
+        <LegalParagraph>
+          The coach fetches relevant Google Health data when needed and processes it with your
+          question through Cloudflare infrastructure and AI services to generate an answer.
         </LegalParagraph>
         <LegalParagraph>
           On the web, OAuth tokens and preferences are stored in browser local storage and are
           protected by the browser&apos;s same-origin controls and the security of your browser and
-          device. Do not use OpenFit on a shared or untrusted device, and sign out when finished.
-          No method of storage or transmission is completely secure, but we use reasonable
-          technical and organizational safeguards to prevent unauthorized access, alteration,
-          disclosure, or destruction.
+          device.
+        </LegalParagraph>
+        <LegalParagraph>
+          Do not use OpenFit on a shared or untrusted device, and sign out when finished. No method
+          of storage or transmission is completely secure.
+        </LegalParagraph>
+        <LegalParagraph>
+          We use reasonable technical and organizational safeguards to prevent unauthorized access,
+          alteration, disclosure, or destruction.
         </LegalParagraph>
       </LegalSection>
 
       <LegalSection title="Data Retention and Deletion">
         <LegalBullet>
-          OAuth tokens remain on your device or in your browser until you sign out, the tokens
-          expire or are revoked, you clear the app or browser data, or you uninstall the app.
+          Local OAuth tokens remain on your device or in your browser until you sign out, the tokens
+          expire or are revoked, you clear app or browser data, or you uninstall OpenFit.
         </LegalBullet>
         <LegalBullet>
           Google Health dashboard data is held in an in-memory cache only while the app is running.
@@ -110,35 +140,56 @@ export default function PrivacyPolicyScreen() {
           uninstall OpenFit.
         </LegalBullet>
         <LegalBullet>
-          The temporary server-side OAuth callback session is deleted after retrieval and always
-          expires within two minutes. OpenFit does not retain Google Health records in a
-          server-side user database.
+          The encrypted server-side Google refresh token remains while your coach connection is
+          active. Revoking OpenFit in your Google Account prevents further Google data access.
+        </LegalBullet>
+        <LegalBullet>
+          Coach messages are retained for up to 90 days. You can delete the full conversation
+          sooner from the coach screen, which removes it from every device.
         </LegalBullet>
         <LegalParagraph>
           To delete locally stored Google user data, sign out of OpenFit and clear the app&apos;s data
-          or uninstall it. On the web, sign out and clear site data for OpenFit in your browser. You
-          can also revoke OpenFit&apos;s access from your Google Account permissions. To request help
-          with deletion or receive confirmation about data associated with your use of OpenFit,
-          contact {OPENFIT_CONTACT_EMAIL}.
+          or uninstall it. On the web, sign out and clear site data for OpenFit in your browser.
+        </LegalParagraph>
+        <LegalParagraph>
+          You can revoke OpenFit&apos;s access from your Google Account permissions. To request deletion
+          of other data associated with your use of OpenFit, contact {OPENFIT_CONTACT_EMAIL}.
         </LegalParagraph>
       </LegalSection>
 
       <LegalSection title="Sharing">
         <LegalParagraph>
           OpenFit uses Google APIs for sign-in, token exchange, token refresh, and Google Health
-          data access. On iOS, OpenFit uses Apple Health only when you grant permission and start
-          the export.
+          data access. Cloudflare infrastructure stores encrypted coach tokens and messages.
+        </LegalParagraph>
+        <LegalParagraph>
+          Cloudflare AI services process questions, conversation history, and relevant Google Health
+          data to generate coach responses.
+        </LegalParagraph>
+        <LegalParagraph>
+          Voice recordings are sent to ElevenLabs for transcription. On iOS, OpenFit uses Apple
+          Health only when you grant permission and start the export.
         </LegalParagraph>
         <LegalParagraph>
           We do not sell personal data. We do not share Google Health data with advertisers.
         </LegalParagraph>
       </LegalSection>
 
+      <LegalSection title="Google Health API Limited Use">
+        <LegalParagraph>
+          OpenFit&apos;s use of Google Health API information complies with the Google Health API
+          Developer and User Data Policy, including its Limited Use requirements.
+        </LegalParagraph>
+      </LegalSection>
+
       <LegalSection title="Your Choices">
         <LegalParagraph>
           You can revoke Google access from your Google account settings. You can revoke Apple
-          Health permissions in the iOS Health app or iOS Settings. Signing out removes stored
-          Google OAuth tokens and clears current health summaries from the app and widgets.
+          Health permissions in the iOS Health app or iOS Settings.
+        </LegalParagraph>
+        <LegalParagraph>
+          Signing out removes local Google OAuth tokens and clears current health summaries from
+          the app and widgets. You can delete stored coach messages from the coach screen.
         </LegalParagraph>
       </LegalSection>
 

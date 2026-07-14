@@ -6,11 +6,10 @@ import { Platform } from 'react-native';
 
 import { fetchApiJson } from '@/lib/api-base';
 import {
-  GOOGLE_HEALTH_SCOPES,
-  GOOGLE_OAUTH_DISCOVERY,
   type GoogleHealthConfig,
   type GoogleTokenResponse,
 } from '@/lib/google-health';
+import { buildGoogleAuthUrl } from '@/lib/google-oauth-request';
 import {
   clearPendingGoogleOAuth,
   loadPendingGoogleOAuth,
@@ -44,23 +43,6 @@ type GoogleOAuthFlowOptions<Range extends number> = {
 
 function createOAuthState(appReturnUri: string) {
   return `${ExpoCrypto.randomUUID()}.${encodeURIComponent(appReturnUri)}`;
-}
-
-function buildGoogleAuthUrl(config: GoogleHealthConfig, state: string) {
-  const url = new URL(GOOGLE_OAUTH_DISCOVERY.authorizationEndpoint);
-  url.searchParams.set('client_id', config.clientId);
-  url.searchParams.set('redirect_uri', config.redirectUri);
-  url.searchParams.set('response_type', 'code');
-  url.searchParams.set('scope', GOOGLE_HEALTH_SCOPES.join(' '));
-  url.searchParams.set('access_type', 'offline');
-  url.searchParams.set('prompt', 'consent');
-  url.searchParams.set('state', state);
-
-  if (Platform.OS === 'web') {
-    url.searchParams.set('include_granted_scopes', 'true');
-  }
-
-  return url.toString();
 }
 
 export function isGoogleConfigReady(
