@@ -23,6 +23,10 @@ export default function PrivacyPolicyScreen() {
           that data in a configurable dashboard and home-screen widgets.
         </LegalParagraph>
         <LegalParagraph>
+          OpenFit also includes an offline exercise library and a manual gym log for sets, reps,
+          weight, and optional notes. The manual gym log can be used without connecting Google.
+        </LegalParagraph>
+        <LegalParagraph>
           The Personal Health-Data Coach uses your questions and relevant Google Health data to help
           you understand your wellness information. On iOS, OpenFit can export selected records to
           Apple Health when you start that sync.
@@ -44,6 +48,10 @@ export default function PrivacyPolicyScreen() {
         </LegalBullet>
         <LegalBullet>Dashboard preferences, widget preferences, cached summaries, and sync status.</LegalBullet>
         <LegalBullet>
+          Manual gym entries you create, including the exercise, date, sets, repetitions, weight,
+          selected unit, and optional notes.
+        </LegalBullet>
+        <LegalBullet>
           Questions, messages, and voice recordings you submit when using the Personal Health-Data Coach.
         </LegalBullet>
         <LegalBullet>
@@ -57,6 +65,7 @@ export default function PrivacyPolicyScreen() {
         <LegalBullet>Fetch and refresh your Google Health data.</LegalBullet>
         <LegalBullet>Display your dashboard, cards, rings, and widgets.</LegalBullet>
         <LegalBullet>Save your preferences.</LegalBullet>
+        <LegalBullet>Search the exercise library and calculate your local training history and volume.</LegalBullet>
         <LegalBullet>
           Process your questions and relevant Google Health data through our Cloudflare-based
           Personal Health-Data Coach to generate responses.
@@ -80,6 +89,11 @@ export default function PrivacyPolicyScreen() {
         </LegalParagraph>
         <LegalParagraph>
           On web, OAuth tokens and preferences may be stored in browser storage.
+        </LegalParagraph>
+        <LegalParagraph>
+          Manual gym entries are stored only on your current device: in a local SQLite database on
+          native platforms and in browser storage on web. They are not sent to the coach or a
+          third-party fitness provider.
         </LegalParagraph>
         <LegalParagraph>
           OpenFit server routes process OAuth authorization codes and token refresh requests so the
@@ -140,6 +154,10 @@ export default function PrivacyPolicyScreen() {
           uninstall OpenFit.
         </LegalBullet>
         <LegalBullet>
+          Manual gym entries remain locally until you delete an entry, clear app or browser data,
+          or uninstall OpenFit.
+        </LegalBullet>
+        <LegalBullet>
           The encrypted server-side Google refresh token remains while your coach connection is
           active. Revoking OpenFit in your Google Account prevents further Google data access.
         </LegalBullet>
@@ -171,6 +189,10 @@ export default function PrivacyPolicyScreen() {
           Health only when you grant permission and start the export.
         </LegalParagraph>
         <LegalParagraph>
+          Garmin and Strava are shown as informational, approval-gated connections. OpenFit does
+          not currently authenticate with them or receive their data.
+        </LegalParagraph>
+        <LegalParagraph>
           We do not sell personal data. We do not share Google Health data with advertisers.
         </LegalParagraph>
       </LegalSection>
@@ -189,7 +211,8 @@ export default function PrivacyPolicyScreen() {
         </LegalParagraph>
         <LegalParagraph>
           Signing out removes local Google OAuth tokens and clears current health summaries from
-          the app and widgets. You can delete stored coach messages from the coach screen.
+          the app and widgets. It does not delete your local manual gym log. You can delete gym
+          entries from Fitness and stored coach messages from the coach screen.
         </LegalParagraph>
       </LegalSection>
 

@@ -8,7 +8,7 @@ import {
 
 export default function TermsScreen() {
   return (
-    <LegalPage title="OpenFit Terms of Service" updated="June 26, 2026">
+    <LegalPage title="OpenFit Terms of Service" updated="July 14, 2026">
       <LegalSection title="Provider">
         <LegalParagraph>
           OpenFit is provided by {OPENFIT_PROVIDER}. Contact {OPENFIT_CONTACT_EMAIL} with support
@@ -19,8 +19,9 @@ export default function TermsScreen() {
       <LegalSection title="Use of OpenFit">
         <LegalParagraph>
           OpenFit is a personal wellness utility that helps you view Google Health data and, on iOS,
-          manually export selected records to Apple Health. You are responsible for the Google,
-          Apple, and device accounts you use with OpenFit.
+          manually export selected records to Apple Health. It also provides an offline exercise
+          library and a device-local manual workout log. You are responsible for the Google, Apple,
+          and device accounts you use with OpenFit and for the accuracy of entries you create.
         </LegalParagraph>
       </LegalSection>
 
@@ -42,7 +43,8 @@ export default function TermsScreen() {
         <LegalParagraph>
           OpenFit may change, pause, or stop features as the product evolves or as third-party APIs
           change. Health data availability depends on Google Health, Apple Health, your devices, and
-          the permissions you grant.
+          the permissions you grant. Garmin and Strava connections require separate provider
+          approval and compatible terms and are not currently active data connections in OpenFit.
         </LegalParagraph>
       </LegalSection>
 

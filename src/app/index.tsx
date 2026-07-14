@@ -604,6 +604,18 @@ export default function HomeScreen() {
             <ActionButton label="Sign in with Google" disabled={!canLogin} onPress={startGoogleSignIn} />
           )}
 
+          <Link href="/fitness" asChild>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Open the offline workout log"
+              accessibilityHint="Does not require a Google connection"
+              style={({ pressed }) => [styles.workoutLogLink, pressed && styles.pressed]}
+            >
+              <MetricIcon icon="dumbbell.fill" glyph="◆" size={18} color={theme.text} />
+              <ThemedText type="smallBold">Use the workout log offline</ThemedText>
+            </Pressable>
+          </Link>
+
           {DEBUG_ENABLED && (
             <DebugPanel
               expanded={showDebug}
@@ -655,6 +667,17 @@ export default function HomeScreen() {
                   {todayStr}
                 </ThemedText>
                 <View style={styles.headerButtons}>
+                  <Link href="/fitness" asChild>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="Fitness and workout log"
+                      accessibilityHint="Search exercises and log gym sets"
+                      hitSlop={12}
+                      style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
+                    >
+                      <MetricIcon icon="dumbbell.fill" glyph="◆" size={28} color={theme.text} />
+                    </Pressable>
+                  </Link>
                   <Link href="/coach" asChild>
                     <Pressable
                       accessibilityRole="button"
@@ -1104,6 +1127,14 @@ const styles = StyleSheet.create({
     minHeight: 50,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  workoutLogLink: {
+    minHeight: 44,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.two,
+    paddingHorizontal: Spacing.three,
   },
   debugToggle: {
     paddingVertical: Spacing.one,
