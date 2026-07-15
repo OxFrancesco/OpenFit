@@ -23,7 +23,7 @@ export const FITNESS_PROVIDERS: readonly FitnessProvider[] = [
   {
     id: 'garmin',
     name: 'Garmin Connect',
-    detail: 'Activity import requires Garmin partner approval and issued credentials',
+    detail: 'Connection only; activities are not imported. Garmin partner approval is required',
     statusLabel: 'Partner approval',
     availability: 'approval-required',
     actionLabel: 'Partner details',
@@ -32,7 +32,7 @@ export const FITNESS_PROVIDERS: readonly FitnessProvider[] = [
   {
     id: 'strava',
     name: 'Strava',
-    detail: 'Kept separate while multi-provider and AI compatibility is reviewed',
+    detail: 'Connection only; activities are not imported. Written policy clearance is required',
     statusLabel: 'Policy review',
     availability: 'policy-review',
     actionLabel: 'Review policy',

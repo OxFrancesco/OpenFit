@@ -1,4 +1,4 @@
-import { router, useFocusEffect, type Href } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams, type Href } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
@@ -14,8 +14,13 @@ import Animated, { FadeIn, FadeInDown, LinearTransition } from 'react-native-rea
 import { MetricIcon } from '@/components/metric-icon';
 import { ThemedText } from '@/components/themed-text';
 import { ErrorRed, Fonts, MaxContentWidth, Spacing } from '@/constants/theme';
+import { useFitnessConnections } from '@/hooks/use-fitness-connections';
 import { useTheme } from '@/hooks/use-theme';
 import { EXERCISE_MUSCLES, getCatalogExercise } from '@/lib/exercise-catalog';
+import type {
+  ConnectableFitnessProviderId,
+  FitnessConnectionSummary,
+} from '@/lib/fitness-connections-contract';
 import {
   formatWeight,
   personalBestKg,
@@ -42,7 +47,10 @@ const SECTIONS: { id: FitnessSection; label: string }[] = [
 
 export function FitnessScreen() {
   const theme = useTheme();
-  const [section, setSection] = useState<FitnessSection>('exercises');
+  const initialRouteParams = useLocalSearchParams<{ provider?: string | string[] }>();
+  const [section, setSection] = useState<FitnessSection>(() =>
+    initialRouteParams.provider ? 'connections' : 'exercises'
+  );
   const [query, setQuery] = useState('');
   const [muscle, setMuscle] = useState<string | null>(null);
   const [exercises, setExercises] = useState<Exercise[]>([]);
@@ -52,6 +60,7 @@ export function FitnessScreen() {
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [statsNow] = useState(() => Date.now());
+  const fitnessConnections = useFitnessConnections(googleConnected);
 
   const refresh = useCallback(async () => {
     try {
@@ -71,7 +80,11 @@ export function FitnessScreen() {
 
       setGoogleConnected(
         tokenResult.status === 'fulfilled' &&
-          Boolean(tokenResult.value && isAccessTokenFresh(tokenResult.value))
+          Boolean(
+            tokenResult.value?.idToken &&
+              tokenResult.value.accessToken &&
+              (isAccessTokenFresh(tokenResult.value) || tokenResult.value.refreshToken)
+          )
       );
     } finally {
       setLoading(false);
@@ -125,7 +138,11 @@ export function FitnessScreen() {
       exercises: new Set(weekLogs.map((log) => log.exerciseId)).size,
     };
   }, [logs, statsNow]);
-  const errorMessages = [historyError, searchError].filter((message): message is string => Boolean(message));
+  const errorMessages = [
+    historyError,
+    searchError,
+    section === 'connections' ? fitnessConnections.error : null,
+  ].filter((message): message is string => Boolean(message));
 
   return (
     <ScrollView
@@ -152,7 +169,10 @@ export function FitnessScreen() {
           volumeKg={stats.volumeKg}
         />
 
-        <View style={[styles.segments, { backgroundColor: theme.backgroundSelected }]}>
+        <View
+          accessibilityRole="tablist"
+          style={[styles.segments, { backgroundColor: theme.backgroundSelected }]}
+        >
           {SECTIONS.map((item) => {
             const selected = section === item.id;
             return (
@@ -210,7 +230,18 @@ export function FitnessScreen() {
         ) : null}
 
         {section === 'connections' ? (
-          <Connections googleConnected={googleConnected} />
+          <Connections
+            googleConnected={googleConnected}
+            googleLoading={loading}
+            connections={fitnessConnections.connections}
+            busyProvider={fitnessConnections.busyProvider}
+            operationInProgress={fitnessConnections.operationInProgress}
+            loading={fitnessConnections.loading}
+            onConnect={fitnessConnections.connect}
+            onDisconnect={fitnessConnections.disconnect}
+            failedDisconnectProvider={fitnessConnections.failedDisconnectProvider}
+            onRemoveLocal={fitnessConnections.removeLocal}
+          />
         ) : null}
       </View>
     </ScrollView>
@@ -614,7 +645,29 @@ function HistoryStat({ label, value }: { label: string; value: string }) {
   );
 }
 
-function Connections({ googleConnected }: { googleConnected: boolean }) {
+function Connections({
+  googleConnected,
+  googleLoading,
+  connections,
+  busyProvider,
+  operationInProgress,
+  loading,
+  onConnect,
+  onDisconnect,
+  failedDisconnectProvider,
+  onRemoveLocal,
+}: {
+  googleConnected: boolean;
+  googleLoading: boolean;
+  connections: readonly FitnessConnectionSummary[];
+  busyProvider: ConnectableFitnessProviderId | null;
+  operationInProgress: boolean;
+  loading: boolean;
+  onConnect: (provider: ConnectableFitnessProviderId) => Promise<void>;
+  onDisconnect: (provider: ConnectableFitnessProviderId) => Promise<void>;
+  failedDisconnectProvider: ConnectableFitnessProviderId | null;
+  onRemoveLocal: (provider: ConnectableFitnessProviderId) => Promise<void>;
+}) {
   const theme = useTheme();
   return (
     <Animated.View entering={FadeIn.duration(180)} style={styles.section}>
@@ -623,8 +676,9 @@ function Connections({ googleConnected }: { googleConnected: boolean }) {
         <View style={styles.flex}>
           <ThemedText type="smallBold">Connections stay explicit</ThemedText>
           <ThemedText selectable type="small" style={{ color: theme.textSecondary }}>
-            Manual gym logs are local. OpenFit does not mix Strava data into Google, Garmin, or the
-            AI coach while current provider terms are under review.
+            Provider credentials stay encrypted on the server. Strava remains disabled until
+            written policy clearance; Garmin requires partner approval. Neither service is sent to
+            the AI coach.
           </ThemedText>
         </View>
       </View>
@@ -632,7 +686,7 @@ function Connections({ googleConnected }: { googleConnected: boolean }) {
       <View style={styles.resultHeader}>
         <ThemedText type="smallBold">Fitness services</ThemedText>
         <ThemedText type="caption" style={{ color: theme.textSecondary }}>
-          3 selected
+          3 services
         </ThemedText>
       </View>
 
@@ -641,7 +695,20 @@ function Connections({ googleConnected }: { googleConnected: boolean }) {
           <ProviderCard
             key={provider.id}
             provider={provider}
-            connected={provider.id === 'google-health' && googleConnected}
+            googleConnected={googleConnected}
+            googleLoading={googleLoading}
+            connection={
+              provider.id === 'google-health'
+                ? undefined
+                : connections.find((item) => item.provider === provider.id)
+            }
+            busy={provider.id !== 'google-health' && busyProvider === provider.id}
+            actionsBusy={operationInProgress}
+            loading={provider.id !== 'google-health' && loading}
+            onConnect={onConnect}
+            onDisconnect={onDisconnect}
+            removeLocalAvailable={failedDisconnectProvider === provider.id}
+            onRemoveLocal={onRemoveLocal}
           />
         ))}
       </View>
@@ -649,17 +716,87 @@ function Connections({ googleConnected }: { googleConnected: boolean }) {
   );
 }
 
-function ProviderCard({ provider, connected }: { provider: FitnessProvider; connected: boolean }) {
+function ProviderCard({
+  provider,
+  googleConnected,
+  googleLoading,
+  connection,
+  busy,
+  actionsBusy,
+  loading,
+  onConnect,
+  onDisconnect,
+  removeLocalAvailable,
+  onRemoveLocal,
+}: {
+  provider: FitnessProvider;
+  googleConnected: boolean;
+  googleLoading: boolean;
+  connection?: FitnessConnectionSummary;
+  busy: boolean;
+  actionsBusy: boolean;
+  loading: boolean;
+  onConnect: (provider: ConnectableFitnessProviderId) => Promise<void>;
+  onDisconnect: (provider: ConnectableFitnessProviderId) => Promise<void>;
+  removeLocalAvailable: boolean;
+  onRemoveLocal: (provider: ConnectableFitnessProviderId) => Promise<void>;
+}) {
   const theme = useTheme();
-  const available = provider.availability === 'available';
-  const actionLabel = connected ? 'Connected' : available ? 'Connect' : provider.actionLabel;
+  const isGoogle = provider.id === 'google-health';
+  const connected = isGoogle ? googleConnected : connection?.state === 'connected';
+  const unavailable = !isGoogle && connection?.state === 'unavailable';
+  const needsGoogle = !isGoogle && !googleConnected && !googleLoading;
+  const actionLabel = providerActionLabel({
+    busy,
+    connected,
+    isGoogle,
+    loading,
+    needsGoogle,
+    provider,
+    connection,
+    removeLocalAvailable,
+    googleLoading,
+  });
+  const statusLabel = providerStatusLabel({
+    connected,
+    isGoogle,
+    loading,
+    needsGoogle,
+    provider,
+    connection,
+    removeLocalAvailable,
+    googleLoading,
+  });
+  const disabled = actionsBusy || loading || googleLoading;
 
   const handlePress = () => {
-    if (available) {
+    if (provider.id === 'google-health') {
       router.push(connected ? ('/settings' as Href) : ('/' as Href));
       return;
     }
-    void Linking.openURL(provider.infoUrl);
+
+    const providerId = provider.id;
+
+    if (needsGoogle) {
+      router.push('/');
+      return;
+    }
+
+    if (unavailable || !connection) {
+      void Linking.openURL(provider.infoUrl);
+      return;
+    }
+
+    if (connection.state === 'connected') {
+      if (removeLocalAvailable) {
+        confirmProviderLocalRemoval(provider, () => void onRemoveLocal(providerId));
+        return;
+      }
+      confirmProviderDisconnect(provider, () => void onDisconnect(providerId));
+      return;
+    }
+
+    void onConnect(providerId);
   };
 
   return (
@@ -673,21 +810,32 @@ function ProviderCard({ provider, connected }: { provider: FitnessProvider; conn
           <ThemedText selectable type="small" style={{ color: theme.textSecondary }}>
             {provider.detail}
           </ThemedText>
+          {connection?.externalAccountLabel ? (
+            <ThemedText selectable type="caption" style={{ color: theme.textSecondary }}>
+              Account {connection.externalAccountLabel}
+            </ThemedText>
+          ) : null}
         </View>
       </View>
       <View style={styles.providerFooter}>
-        <View style={[styles.statusPill, { backgroundColor: theme.backgroundSelected }]}>
+        <View
+          accessibilityLiveRegion="polite"
+          style={[styles.statusPill, { backgroundColor: theme.backgroundSelected }]}
+        >
           <ThemedText type="caption" style={{ color: theme.textSecondary }}>
-            {connected ? 'Connected' : provider.statusLabel}
+            {statusLabel}
           </ThemedText>
         </View>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={`${actionLabel} ${provider.name}`}
+          accessibilityState={{ busy, disabled }}
+          disabled={disabled}
           onPress={handlePress}
           style={({ pressed }) => [
             styles.providerButton,
             { backgroundColor: connected ? theme.backgroundSelected : theme.text },
+            disabled && styles.disabled,
             pressed && styles.pressed,
           ]}
         >
@@ -701,6 +849,99 @@ function ProviderCard({ provider, connected }: { provider: FitnessProvider; conn
       </View>
     </View>
   );
+}
+
+function providerActionLabel({
+  busy,
+  connected,
+  isGoogle,
+  loading,
+  needsGoogle,
+  provider,
+  connection,
+  removeLocalAvailable,
+  googleLoading,
+}: {
+  busy: boolean;
+  connected: boolean;
+  isGoogle: boolean;
+  loading: boolean;
+  needsGoogle: boolean;
+  provider: FitnessProvider;
+  connection?: FitnessConnectionSummary;
+  removeLocalAvailable: boolean;
+  googleLoading: boolean;
+}) {
+  if (busy) return 'Working…';
+  if (googleLoading) return 'Checking…';
+  if (isGoogle) return connected ? 'Manage' : 'Connect';
+  if (needsGoogle) return 'Open Health';
+  if (loading) return 'Checking…';
+  if (connected) return removeLocalAvailable ? 'Remove from OpenFit' : 'Disconnect';
+  if (connection?.state === 'reauth-required') return 'Reconnect';
+  if (connection?.state === 'disconnected') return 'Connect';
+  return provider.actionLabel;
+}
+
+function providerStatusLabel({
+  connected,
+  isGoogle,
+  loading,
+  needsGoogle,
+  provider,
+  connection,
+  removeLocalAvailable,
+  googleLoading,
+}: {
+  connected: boolean;
+  isGoogle: boolean;
+  loading: boolean;
+  needsGoogle: boolean;
+  provider: FitnessProvider;
+  connection?: FitnessConnectionSummary;
+  removeLocalAvailable: boolean;
+  googleLoading: boolean;
+}) {
+  if (googleLoading) return 'Checking Google';
+  if (connected) return removeLocalAvailable ? 'Revocation not confirmed' : 'Connected';
+  if (isGoogle) return 'Available';
+  if (needsGoogle) return 'Google sign-in required';
+  if (loading) return 'Checking server';
+  if (connection?.state === 'reauth-required') return 'Reconnect required';
+  if (connection?.state === 'disconnected') return 'Available';
+  if (connection?.unavailableReason === 'policy-disabled') return 'Written clearance required';
+  if (connection?.unavailableReason === 'approval-required') return 'Partner approval required';
+  if (connection?.unavailableReason === 'not-configured') return 'Server setup required';
+  return provider.statusLabel;
+}
+
+function confirmProviderDisconnect(provider: FitnessProvider, disconnect: () => void) {
+  if (process.env.EXPO_OS === 'web' && typeof window !== 'undefined') {
+    if (window.confirm(`Disconnect ${provider.name}?`)) disconnect();
+    return;
+  }
+
+  Alert.alert(
+    `Disconnect ${provider.name}?`,
+    'OpenFit will ask the provider to revoke access before deleting the encrypted connection.',
+    [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Disconnect', style: 'destructive', onPress: disconnect },
+    ]
+  );
+}
+
+function confirmProviderLocalRemoval(provider: FitnessProvider, removeLocal: () => void) {
+  const message = `Revoke OpenFit in your ${provider.name} account first. This deletes OpenFit's encrypted server-held credential and cannot revoke provider access.`;
+  if (process.env.EXPO_OS === 'web' && typeof window !== 'undefined') {
+    if (window.confirm(`Remove ${provider.name} from OpenFit?\n\n${message}`)) removeLocal();
+    return;
+  }
+
+  Alert.alert(`Remove ${provider.name} from OpenFit?`, message, [
+    { text: 'Cancel', style: 'cancel' },
+    { text: 'Remove from OpenFit', style: 'destructive', onPress: removeLocal },
+  ]);
 }
 
 function ProviderGlyph({ providerId }: { providerId: FitnessProvider['id'] }) {
@@ -1010,5 +1251,8 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.7,
+  },
+  disabled: {
+    opacity: 0.5,
   },
 });

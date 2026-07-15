@@ -27,6 +27,12 @@ export default function PrivacyPolicyScreen() {
           weight, and optional notes. The manual gym log can be used without connecting Google.
         </LegalParagraph>
         <LegalParagraph>
+          OpenFit can establish optional Strava and Garmin account connections when the hosted
+          deployment has the required provider approval. These are connection-only flows in this
+          version: OpenFit does not fetch, import, display, or sync Strava or Garmin activity data.
+          Google Health remains the app&apos;s fitness-data provider.
+        </LegalParagraph>
+        <LegalParagraph>
           The Personal Health-Data Coach uses your questions and relevant Google Health data to help
           you understand your wellness information. On iOS, OpenFit can export selected records to
           Apple Health when you start that sync.
@@ -52,6 +58,18 @@ export default function PrivacyPolicyScreen() {
           selected unit, and optional notes.
         </LegalBullet>
         <LegalBullet>
+          If you connect Strava or Garmin, the provider account identifier and label, granted
+          permissions, connection date, and OAuth credentials needed to maintain and revoke that
+          connection. The current connection flow does not retrieve provider activity records.
+        </LegalBullet>
+        <LegalBullet>
+          When activated, Strava authorization requests only the basic &quot;read&quot; permission.
+          OpenFit records the returned athlete identifier, label, and granted permission list, but
+          this version does not call the Strava activity endpoints. Garmin permissions are determined by the
+          provider-approved app configuration and the user&apos;s consent; OpenFit records the Garmin
+          user identifier and granted permission names without fetching activity records.
+        </LegalBullet>
+        <LegalBullet>
           Questions, messages, and voice recordings you submit when using the Personal Health-Data Coach.
         </LegalBullet>
         <LegalBullet>
@@ -66,6 +84,10 @@ export default function PrivacyPolicyScreen() {
         <LegalBullet>Display your dashboard, cards, rings, and widgets.</LegalBullet>
         <LegalBullet>Save your preferences.</LegalBullet>
         <LegalBullet>Search the exercise library and calculate your local training history and volume.</LegalBullet>
+        <LegalBullet>
+          Establish, show the status of, maintain, and revoke an optional Strava or Garmin account
+          connection when that provider is enabled.
+        </LegalBullet>
         <LegalBullet>
           Process your questions and relevant Google Health data through our Cloudflare-based
           Personal Health-Data Coach to generate responses.
@@ -83,12 +105,12 @@ export default function PrivacyPolicyScreen() {
 
       <LegalSection title="Storage">
         <LegalParagraph>
-          On native platforms, OpenFit stores OAuth tokens and app preferences in local secure
-          platform storage. Widget data, cached summaries, and Apple Health sync ledger entries are
-          stored locally on your device.
+          On native platforms, OpenFit stores Google OAuth tokens and app preferences in local
+          secure platform storage. Widget data, cached summaries, and Apple Health sync ledger
+          entries are stored locally on your device.
         </LegalParagraph>
         <LegalParagraph>
-          On web, OAuth tokens and preferences may be stored in browser storage.
+          On web, Google OAuth tokens and preferences may be stored in browser storage.
         </LegalParagraph>
         <LegalParagraph>
           Manual gym entries are stored only on your current device: in a local SQLite database on
@@ -96,8 +118,17 @@ export default function PrivacyPolicyScreen() {
           third-party fitness provider.
         </LegalParagraph>
         <LegalParagraph>
-          OpenFit server routes process OAuth authorization codes and token refresh requests so the
-          app can connect to Google.
+          OpenFit server routes process Google authorization codes and token refresh requests. For
+          Strava and Garmin, authenticated server routes protect short-lived callback state and
+          forward the provider&apos;s authorization result to the per-user server agent. The agent
+          keeps the authorization code encrypted and pending until the authenticated app proves
+          possession of a verifier created by the app session that started the connection.
+          Authorization codes, access tokens, and refresh tokens are never returned to the app.
+        </LegalParagraph>
+        <LegalParagraph>
+          A connected Strava or Garmin account&apos;s credentials are encrypted at rest inside the
+          Google-account-specific Cloudflare agent. The app receives only a sanitized summary such
+          as connection state, connection date, provider account label, and granted permissions.
         </LegalParagraph>
         <LegalParagraph>
           When you use the coach, OpenFit stores an encrypted Google refresh token on Cloudflare so
@@ -116,18 +147,24 @@ export default function PrivacyPolicyScreen() {
           the app.
         </LegalParagraph>
         <LegalParagraph>
-          On iOS and Android, OAuth tokens are stored using the operating system&apos;s protected
+          On iOS and Android, Google OAuth tokens are stored using the operating system&apos;s protected
           Keychain or Keystore through Expo SecureStore. Coach refresh tokens and messages are
           encrypted at rest on Cloudflare.
+        </LegalParagraph>
+        <LegalParagraph>
+          Strava and Garmin credentials are encrypted at rest in the per-user Cloudflare agent.
+          They are deliberately excluded from coach prompts, AI model input, Google Health
+          snapshots, and manual gym logs. Strava data is never combined with Google Health, Garmin,
+          manual workout data, or other customer data.
         </LegalParagraph>
         <LegalParagraph>
           The coach fetches relevant Google Health data when needed and processes it with your
           question through Cloudflare infrastructure and AI services to generate an answer.
         </LegalParagraph>
         <LegalParagraph>
-          On the web, OAuth tokens and preferences are stored in browser local storage and are
-          protected by the browser&apos;s same-origin controls and the security of your browser and
-          device.
+          On the web, Google OAuth tokens and preferences are stored in browser local storage and
+          are protected by the browser&apos;s same-origin controls and the security of your browser and
+          device. Strava and Garmin credentials are not stored in browser storage.
         </LegalParagraph>
         <LegalParagraph>
           Do not use OpenFit on a shared or untrusted device, and sign out when finished. No method
@@ -141,8 +178,8 @@ export default function PrivacyPolicyScreen() {
 
       <LegalSection title="Data Retention and Deletion">
         <LegalBullet>
-          Local OAuth tokens remain on your device or in your browser until you sign out, the tokens
-          expire or are revoked, you clear app or browser data, or you uninstall OpenFit.
+          Local Google OAuth tokens remain on your device or in your browser until you sign out,
+          the tokens expire or are revoked, you clear app or browser data, or you uninstall OpenFit.
         </LegalBullet>
         <LegalBullet>
           Google Health dashboard data is held in an in-memory cache only while the app is running.
@@ -156,6 +193,15 @@ export default function PrivacyPolicyScreen() {
         <LegalBullet>
           Manual gym entries remain locally until you delete an entry, clear app or browser data,
           or uninstall OpenFit.
+        </LegalBullet>
+        <LegalBullet>
+          A Strava or Garmin credential and its limited connection metadata remain encrypted in the
+          per-user server agent while that connection is active. Disconnect asks the provider to
+          revoke access or delete its registration before OpenFit deletes the encrypted credential.
+          If provider revocation fails, OpenFit keeps the credential so the request can be retried
+          instead of reporting a successful deletion that did not occur. After you revoke OpenFit
+          directly in the provider account, the in-app Remove from OpenFit fallback erases the encrypted
+          credential and connection metadata without claiming to perform remote revocation.
         </LegalBullet>
         <LegalBullet>
           The encrypted server-side Google refresh token remains while your coach connection is
@@ -173,6 +219,16 @@ export default function PrivacyPolicyScreen() {
           You can revoke OpenFit&apos;s access from your Google Account permissions. To request deletion
           of other data associated with your use of OpenFit, contact {OPENFIT_CONTACT_EMAIL}.
         </LegalParagraph>
+        <LegalParagraph>
+          If Strava or Garmin is connected, disconnect it before requesting full account deletion.
+          If normal disconnect fails, revoke OpenFit in the provider account and use Remove from OpenFit.
+          A complete deletion request covers the provider credential and connected-account metadata
+          stored in the per-user agent. For an activated Strava integration, OpenFit must also delete
+          Strava-related personal data after revocation, account deletion, or a user request within
+          30 days unless a longer retention period is legally required, and provide written
+          confirmation of completed deletion. Contact {OPENFIT_CONTACT_EMAIL} if the in-app
+          disconnect is unavailable or to request that confirmation.
+        </LegalParagraph>
       </LegalSection>
 
       <LegalSection title="Sharing">
@@ -189,8 +245,15 @@ export default function PrivacyPolicyScreen() {
           Health only when you grant permission and start the export.
         </LegalParagraph>
         <LegalParagraph>
-          Garmin and Strava are shown as informational, approval-gated connections. OpenFit does
-          not currently authenticate with them or receive their data.
+          If activated and authorized by you, OpenFit communicates with Strava or Garmin only to
+          establish, maintain, inspect, or revoke that provider connection. This version does not
+          request activity records after connection. Strava may monitor and collect API usage data
+          and use that usage data for its business purposes under its API Policy.
+        </LegalParagraph>
+        <LegalParagraph>
+          OpenFit does not disclose Strava or Garmin credentials or data to the Personal
+          Health-Data Coach, AI service providers, advertisers, the other fitness provider, or other
+          OpenFit users. The app receives only the signed-in user&apos;s sanitized connection summary.
         </LegalParagraph>
         <LegalParagraph>
           We do not sell personal data. We do not share Google Health data with advertisers.
@@ -204,10 +267,26 @@ export default function PrivacyPolicyScreen() {
         </LegalParagraph>
       </LegalSection>
 
+      <LegalSection title="Strava Connection Restrictions">
+        <LegalParagraph>
+          The Strava connection is disabled unless the operator has written clearance from Strava
+          that expressly permits this OpenFit use under Strava&apos;s API Policy effective June 1, 2026.
+          Configuring OAuth credentials alone does not enable it. This notice does not claim that
+          Strava has approved, endorsed, or sponsored OpenFit.
+        </LegalParagraph>
+        <LegalParagraph>
+          If the connection is activated, Strava information may be shown only to the authenticated
+          Strava user. OpenFit does not use Strava API materials or data to train, evaluate, ground,
+          retrieve for, or operate an AI system, and it does not combine Strava data with Google
+          Health, Garmin, manual workout data, or any other customer data.
+        </LegalParagraph>
+      </LegalSection>
+
       <LegalSection title="Your Choices">
         <LegalParagraph>
           You can revoke Google access from your Google account settings. You can revoke Apple
-          Health permissions in the iOS Health app or iOS Settings.
+          Health permissions in the iOS Health app or iOS Settings. When available, use Disconnect
+          in Fitness to revoke a Strava or Garmin connection.
         </LegalParagraph>
         <LegalParagraph>
           Signing out removes local Google OAuth tokens and clears current health summaries from

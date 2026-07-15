@@ -2,6 +2,36 @@ import { Agent, routeAgentRequest } from "agents";
 
 import { decryptJson, encryptJson, type EncryptedJson } from "./crypto";
 import {
+  buildAuthorizationUrl,
+  connectionSummary,
+  createOAuthTransaction,
+  credentialNeedsRefresh,
+  exchangeAuthorizationCode,
+  FITNESS_PROVIDERS,
+  generateFitnessOAuthCompletionId,
+  parseFitnessOAuthCompleteInput,
+  parseFitnessOAuthFinalizeInput,
+  parseFitnessOAuthStartInput,
+  parsePendingFitnessAuthorization,
+  parseFitnessProvider,
+  parseProviderCredential,
+  refreshProviderCredential,
+  revokeProviderCredential,
+  verifyFitnessLinkChallenge
+} from "./fitness-oauth";
+import type {
+  FitnessConnectionSummary,
+  FitnessOAuthEnv,
+  FitnessOAuthCompleteInput,
+  FitnessOAuthFinalizeInput,
+  FitnessOAuthPendingCompletion,
+  FitnessOAuthStartInput,
+  FitnessProvider,
+  OAuthTransaction,
+  ProviderCredential,
+  StoredFitnessConnection
+} from "./fitness-oauth";
+import {
   fetchHealthContext,
   listDataPoints,
   refreshGoogleAccessToken,
@@ -27,6 +57,7 @@ import {
   parseRollupInput,
   parseSnapshotInput
 } from "./validation";
+import { isWebSocketUpgrade } from "./request-security";
 import type {
   AskInput,
   ListDataPointsInput,
@@ -40,13 +71,18 @@ type StoredRefreshToken = {
   tokenType?: string;
 };
 
-type AppEnv = Env & {
+type AppEnv = Env & FitnessOAuthEnv & {
   GOOGLE_CLIENT_SECRET: string;
   HEALTH_AGENT_API_TOKEN: string;
   TOKEN_ENCRYPTION_KEY: string;
 };
 
+type EncryptedFitnessConnection = Omit<StoredFitnessConnection, "credential"> & {
+  credential: EncryptedJson;
+};
+
 type HealthAgentState = {
+  fitness?: Partial<Record<FitnessProvider, EncryptedFitnessConnection>>;
   google?: {
     connectedAt: string;
     refreshToken: EncryptedJson;
@@ -61,11 +97,32 @@ type CoachMessageRow = {
   role: "assistant" | "user";
 };
 
+type OAuthTransactionRow = {
+  code_verifier: string | null;
+  expires_at: number;
+  provider: FitnessProvider;
+  redirect_uri: string;
+  state: string;
+};
+
+type PendingOAuthCompletionRow = {
+  authorization_ciphertext: string;
+  authorization_iv: string;
+  code_verifier: string | null;
+  completion_id: string;
+  expires_at: number;
+  link_challenge: string;
+  provider: FitnessProvider;
+  redirect_uri: string;
+};
+
 const DEFAULT_AI_MODEL = "@cf/zai-org/glm-4.7-flash";
 const COACH_MESSAGE_RETENTION_MS = 90 * 24 * 60 * 60 * 1000;
+const FITNESS_OAUTH_PENDING_TTL_MS = 10 * 60 * 1000;
 
 export class FittyHealthAgent extends Agent<AppEnv, HealthAgentState> {
   initialState: HealthAgentState = {};
+  private stateMutationTail: Promise<void> = Promise.resolve();
 
   async onStart(): Promise<void> {
     this.sql`
@@ -80,6 +137,38 @@ export class FittyHealthAgent extends Agent<AppEnv, HealthAgentState> {
       CREATE INDEX IF NOT EXISTS idx_coach_messages_created_at
       ON coach_messages (created_at)
     `;
+    this.sql`
+      CREATE TABLE IF NOT EXISTS fitness_oauth_transactions (
+        state TEXT PRIMARY KEY,
+        provider TEXT NOT NULL CHECK (provider IN ('strava', 'garmin')),
+        redirect_uri TEXT NOT NULL,
+        code_verifier TEXT,
+        expires_at INTEGER NOT NULL,
+        created_at INTEGER NOT NULL
+      )
+    `;
+    this.sql`
+      CREATE INDEX IF NOT EXISTS idx_fitness_oauth_transactions_expires_at
+      ON fitness_oauth_transactions (expires_at)
+    `;
+    this.sql`
+      CREATE TABLE IF NOT EXISTS fitness_oauth_pending_completions (
+        completion_id TEXT PRIMARY KEY,
+        provider TEXT NOT NULL CHECK (provider IN ('strava', 'garmin')),
+        redirect_uri TEXT NOT NULL,
+        code_verifier TEXT,
+        link_challenge TEXT NOT NULL,
+        authorization_ciphertext TEXT NOT NULL,
+        authorization_iv TEXT NOT NULL,
+        expires_at INTEGER NOT NULL,
+        created_at INTEGER NOT NULL
+      )
+    `;
+    this.sql`
+      CREATE INDEX IF NOT EXISTS idx_fitness_oauth_pending_expires_at
+      ON fitness_oauth_pending_completions (expires_at)
+    `;
+    this.purgeExpiredOAuthPendingCompletions();
   }
 
   async onRequest(request: Request): Promise<Response> {
@@ -88,7 +177,8 @@ export class FittyHealthAgent extends Agent<AppEnv, HealthAgentState> {
     }
 
     try {
-      const path = agentSubpath(new URL(request.url).pathname);
+      const requestUrl = new URL(request.url);
+      const path = agentSubpath(requestUrl.pathname);
 
       if (request.method === "POST" && path === "/internal/connect-google") {
         await requireInternalAuth(request, this.env);
@@ -100,6 +190,42 @@ export class FittyHealthAgent extends Agent<AppEnv, HealthAgentState> {
 
       if (request.method === "GET" && path === "/status") {
         return jsonResponse(await this.status(), request, this.env);
+      }
+
+      if (request.method === "GET" && path === "/fitness/connections") {
+        return jsonResponse({ connections: this.listFitnessConnections() }, request, this.env);
+      }
+
+      const oauthStart = path.match(/^\/fitness\/oauth\/([^/]+)\/start$/);
+      if (request.method === "POST" && oauthStart) {
+        const provider = parseFitnessProvider(oauthStart[1]);
+        const body = parseFitnessOAuthStartInput(await readJson(request));
+        return jsonResponse(await this.startFitnessOAuth(provider, body), request, this.env);
+      }
+
+      const oauthComplete = path.match(/^\/fitness\/oauth\/([^/]+)\/complete$/);
+      if (request.method === "POST" && oauthComplete) {
+        const provider = parseFitnessProvider(oauthComplete[1]);
+        const body = parseFitnessOAuthCompleteInput(await readJson(request));
+        return jsonResponse(await this.completeFitnessOAuth(provider, body), request, this.env);
+      }
+
+      const oauthFinalize = path.match(/^\/fitness\/oauth\/([^/]+)\/finalize$/);
+      if (request.method === "POST" && oauthFinalize) {
+        const provider = parseFitnessProvider(oauthFinalize[1]);
+        const body = parseFitnessOAuthFinalizeInput(await readJson(request));
+        return jsonResponse(await this.finalizeFitnessOAuth(provider, body), request, this.env);
+      }
+
+      const disconnect = path.match(/^\/fitness\/connections\/([^/]+)$/);
+      if (request.method === "DELETE" && disconnect) {
+        const provider = parseFitnessProvider(disconnect[1]);
+        const forceLocal = requestUrl.searchParams.get("forceLocal") === "true";
+        return jsonResponse(
+          await this.disconnectFitnessProvider(provider, forceLocal),
+          request,
+          this.env
+        );
       }
 
       if (request.method === "POST" && path === "/connect") {
@@ -159,6 +285,310 @@ export class FittyHealthAgent extends Agent<AppEnv, HealthAgentState> {
     };
   }
 
+  private listFitnessConnections(): FitnessConnectionSummary[] {
+    return FITNESS_PROVIDERS.map((provider) => this.fitnessConnectionSummary(provider));
+  }
+
+  private fitnessConnectionSummary(provider: FitnessProvider): FitnessConnectionSummary {
+    const connection = this.state.fitness?.[provider];
+    return connectionSummary(
+      provider,
+      this.env,
+      connection
+        ? {
+            connectedAt: connection.connectedAt,
+            externalAccountLabel: connection.externalAccountLabel,
+            grantedScopes: connection.grantedScopes
+          }
+        : undefined
+    );
+  }
+
+  private async startFitnessOAuth(
+    provider: FitnessProvider,
+    input: FitnessOAuthStartInput
+  ): Promise<{ authorizationUrl: string }> {
+    if (!this.env.TOKEN_ENCRYPTION_KEY) {
+      throw new HttpError(503, "Secure fitness credential storage is not configured", {
+        provider,
+        unavailableReason: "not-configured"
+      });
+    }
+    const transaction = await createOAuthTransaction(provider, input);
+    const authorizationUrl = await buildAuthorizationUrl(transaction, this.env);
+    const now = Date.now();
+    this.purgeExpiredOAuthTransactions(now);
+    this.purgeExpiredOAuthPendingCompletions(now);
+
+    const existing = this.sql<{ state: string }>`
+      SELECT state
+      FROM fitness_oauth_transactions
+      WHERE state = ${transaction.state}
+      LIMIT 1
+    `;
+    if (existing.length) {
+      throw new HttpError(409, "An OAuth transaction already exists for this state");
+    }
+
+    this.sql`
+      INSERT INTO fitness_oauth_transactions (
+        state,
+        provider,
+        redirect_uri,
+        code_verifier,
+        expires_at,
+        created_at
+      ) VALUES (
+        ${transaction.state},
+        ${transaction.provider},
+        ${transaction.redirectUri},
+        ${transaction.codeVerifier ?? null},
+        ${transaction.expiresAt},
+        ${now}
+      )
+    `;
+
+    return { authorizationUrl };
+  }
+
+  private async completeFitnessOAuth(
+    provider: FitnessProvider,
+    input: FitnessOAuthCompleteInput
+  ): Promise<FitnessOAuthPendingCompletion> {
+    return this.withStateMutation(async () => {
+      if (!this.env.TOKEN_ENCRYPTION_KEY) {
+        throw new HttpError(503, "Secure fitness credential storage is not configured", {
+          provider,
+          unavailableReason: "not-configured"
+        });
+      }
+      const transaction = this.consumeOAuthTransaction(provider, input.state);
+      if (input.error) {
+        throw new HttpError(400, `${provider === "strava" ? "Strava" : "Garmin"} authorization was not completed`);
+      }
+      if (!input.code) {
+        throw new HttpError(400, "OAuth authorization code is missing");
+      }
+
+      const encryptedAuthorization = await encryptJson(
+        {
+          code: input.code,
+          scope: input.scope,
+          version: 1
+        },
+        this.env.TOKEN_ENCRYPTION_KEY
+      );
+      const completionId = generateFitnessOAuthCompletionId();
+      const now = Date.now();
+      const expiresAt = now + FITNESS_OAUTH_PENDING_TTL_MS;
+      this.purgeExpiredOAuthPendingCompletions(now);
+      this.sql`
+        INSERT INTO fitness_oauth_pending_completions (
+          completion_id,
+          provider,
+          redirect_uri,
+          code_verifier,
+          link_challenge,
+          authorization_ciphertext,
+          authorization_iv,
+          expires_at,
+          created_at
+        ) VALUES (
+          ${completionId},
+          ${provider},
+          ${transaction.redirectUri},
+          ${transaction.codeVerifier ?? null},
+          ${input.linkChallenge},
+          ${encryptedAuthorization.ciphertext},
+          ${encryptedAuthorization.iv},
+          ${expiresAt},
+          ${now}
+        )
+      `;
+
+      return { completionId, provider, state: "pending" };
+    });
+  }
+
+  private async finalizeFitnessOAuth(
+    provider: FitnessProvider,
+    input: FitnessOAuthFinalizeInput
+  ): Promise<FitnessConnectionSummary> {
+    return this.withStateMutation(async () => {
+      if (!this.env.TOKEN_ENCRYPTION_KEY) {
+        throw new HttpError(503, "Secure fitness credential storage is not configured", {
+          provider,
+          unavailableReason: "not-configured"
+        });
+      }
+
+      const now = Date.now();
+      this.purgeExpiredOAuthPendingCompletions(now);
+      const pendingRows = this.sql<PendingOAuthCompletionRow>`
+        SELECT
+          completion_id,
+          provider,
+          redirect_uri,
+          code_verifier,
+          link_challenge,
+          authorization_ciphertext,
+          authorization_iv,
+          expires_at
+        FROM fitness_oauth_pending_completions
+        WHERE completion_id = ${input.completionId}
+          AND provider = ${provider}
+          AND expires_at > ${now}
+        LIMIT 1
+      `;
+      const pending = pendingRows[0];
+      if (
+        !pending ||
+        !(await verifyFitnessLinkChallenge(input.linkVerifier, pending.link_challenge))
+      ) {
+        throw new HttpError(409, "Pending OAuth completion is missing, expired, already used, or invalid");
+      }
+
+      const consumeNow = Date.now();
+      const consumedRows = this.sql<PendingOAuthCompletionRow>`
+        DELETE FROM fitness_oauth_pending_completions
+        WHERE completion_id = ${input.completionId}
+          AND provider = ${provider}
+          AND expires_at > ${consumeNow}
+        RETURNING
+          completion_id,
+          provider,
+          redirect_uri,
+          code_verifier,
+          link_challenge,
+          authorization_ciphertext,
+          authorization_iv,
+          expires_at
+      `;
+      const consumed = consumedRows[0];
+      if (!consumed) {
+        throw new HttpError(409, "Pending OAuth completion is missing, expired, or already used");
+      }
+
+      const authorization = parsePendingFitnessAuthorization(
+        await decryptJson(
+          {
+            ciphertext: consumed.authorization_ciphertext,
+            iv: consumed.authorization_iv,
+            version: 1
+          },
+          this.env.TOKEN_ENCRYPTION_KEY
+        )
+      );
+      const transaction: OAuthTransaction = {
+        codeVerifier: consumed.code_verifier ?? undefined,
+        expiresAt: consumed.expires_at,
+        provider: consumed.provider,
+        redirectUri: consumed.redirect_uri,
+        state: consumed.completion_id
+      };
+      const credential = await exchangeAuthorizationCode(
+        transaction,
+        authorization.code,
+        authorization.scope,
+        this.env
+      );
+      await this.storeFitnessConnectionUnlocked(credential);
+      return this.fitnessConnectionSummary(provider);
+    });
+  }
+
+  private consumeOAuthTransaction(provider: FitnessProvider, state: string): OAuthTransaction {
+    const now = Date.now();
+    const rows = this.sql<OAuthTransactionRow>`
+      DELETE FROM fitness_oauth_transactions
+      WHERE state = ${state}
+        AND provider = ${provider}
+        AND expires_at > ${now}
+      RETURNING state, provider, redirect_uri, code_verifier, expires_at
+    `;
+    this.purgeExpiredOAuthTransactions(now);
+
+    const row = rows[0];
+    if (!row) {
+      throw new HttpError(409, "OAuth transaction is missing, expired, or already used");
+    }
+    return {
+      codeVerifier: row.code_verifier ?? undefined,
+      expiresAt: row.expires_at,
+      provider: row.provider,
+      redirectUri: row.redirect_uri,
+      state: row.state
+    };
+  }
+
+  private purgeExpiredOAuthTransactions(now = Date.now()): void {
+    this.sql`DELETE FROM fitness_oauth_transactions WHERE expires_at <= ${now}`;
+  }
+
+  private purgeExpiredOAuthPendingCompletions(now = Date.now()): void {
+    this.sql`DELETE FROM fitness_oauth_pending_completions WHERE expires_at <= ${now}`;
+  }
+
+  private async storeFitnessConnectionUnlocked(
+    credential: ProviderCredential,
+    connectedAt = new Date().toISOString()
+  ): Promise<void> {
+    if (!this.env.TOKEN_ENCRYPTION_KEY) {
+      throw new HttpError(500, "TOKEN_ENCRYPTION_KEY is not configured");
+    }
+
+    const connection: EncryptedFitnessConnection = {
+      connectedAt,
+      credential: await encryptJson(credential, this.env.TOKEN_ENCRYPTION_KEY),
+      externalAccountLabel: credential.externalAccountLabel,
+      grantedScopes: [...credential.grantedScopes]
+    };
+    this.setState({
+      ...this.state,
+      fitness: {
+        ...this.state.fitness,
+        [credential.provider]: connection
+      }
+    });
+  }
+
+  private async disconnectFitnessProvider(
+    provider: FitnessProvider,
+    forceLocal = false
+  ): Promise<FitnessConnectionSummary> {
+    return this.withStateMutation(async () => {
+      const connection = this.state.fitness?.[provider];
+      if (!connection) {
+        return this.fitnessConnectionSummary(provider);
+      }
+      if (forceLocal) {
+        return this.removeFitnessConnectionUnlocked(provider);
+      }
+      if (!this.env.TOKEN_ENCRYPTION_KEY) {
+        throw new HttpError(500, "TOKEN_ENCRYPTION_KEY is not configured");
+      }
+
+      let credential = parseProviderCredential(
+        await decryptJson(connection.credential, this.env.TOKEN_ENCRYPTION_KEY),
+        provider
+      );
+      if (provider === "garmin" && credentialNeedsRefresh(credential)) {
+        credential = await refreshProviderCredential(credential, this.env);
+        await this.storeFitnessConnectionUnlocked(credential, connection.connectedAt);
+      }
+      await revokeProviderCredential(credential, this.env);
+
+      return this.removeFitnessConnectionUnlocked(provider);
+    });
+  }
+
+  private removeFitnessConnectionUnlocked(provider: FitnessProvider): FitnessConnectionSummary {
+    const fitness = { ...this.state.fitness };
+    delete fitness[provider];
+    this.setState({ ...this.state, fitness });
+    return this.fitnessConnectionSummary(provider);
+  }
+
   private async storeGoogleToken(token: GoogleTokenResponse): Promise<Record<string, unknown>> {
     const refreshToken = token.refresh_token;
     if (!refreshToken) {
@@ -174,13 +604,16 @@ export class FittyHealthAgent extends Agent<AppEnv, HealthAgentState> {
       tokenType: token.token_type
     };
 
-    this.setState({
-      ...this.state,
-      google: {
-        connectedAt: new Date().toISOString(),
-        refreshToken: await encryptJson(stored, this.env.TOKEN_ENCRYPTION_KEY),
-        scope: token.scope
-      }
+    const encryptedRefreshToken = await encryptJson(stored, this.env.TOKEN_ENCRYPTION_KEY);
+    await this.withStateMutation(async () => {
+      this.setState({
+        ...this.state,
+        google: {
+          connectedAt: new Date().toISOString(),
+          refreshToken: encryptedRefreshToken,
+          scope: token.scope
+        }
+      });
     });
 
     return {
@@ -319,6 +752,21 @@ export class FittyHealthAgent extends Agent<AppEnv, HealthAgentState> {
     return decrypted.content;
   }
 
+  private async withStateMutation<T>(operation: () => Promise<T>): Promise<T> {
+    const previous = this.stateMutationTail;
+    let release: () => void = () => {};
+    this.stateMutationTail = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+
+    await previous;
+    try {
+      return await operation();
+    } finally {
+      release();
+    }
+  }
+
   private async snapshot(input: SnapshotInput): Promise<Record<string, unknown>> {
     return fetchHealthContext(await this.getAccessToken(), { days: clampDays(input.days, 30) });
   }
@@ -353,6 +801,10 @@ export default {
 
     try {
       const url = new URL(request.url);
+
+      if (isWebSocketUpgrade(request)) {
+        throw new HttpError(404, "Not found");
+      }
 
       if (request.method === "GET" && url.pathname === "/health") {
         return jsonResponse({ ok: true }, request, env);

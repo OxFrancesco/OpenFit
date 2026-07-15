@@ -7,7 +7,8 @@
     "check": "tsc --noEmit",
     "deploy": "wrangler deploy",
     "dev": "wrangler dev",
-    "types": "wrangler types"
+    "test": "bun test src",
+    "types": "bun ./node_modules/wrangler/bin/wrangler.js types"
   },
   "dependencies": {
     "agents": "0.17.0"
