@@ -36,13 +36,13 @@ The Apple Health export is a separate, user-started iOS action. It reads the alr
 
 Complete every item against the deployed build:
 
-- [ ] Confirm all production authorization URLs and manifests use the exact six-scope contract above.
-- [ ] Confirm iOS, Android, and web OAuth clients belong to the Google Cloud project submitted for verification.
-- [ ] Confirm the deployed privacy policy contains OpenFit's Google Health API Limited Use affirmation.
-- [ ] In Google Auth Platform → Data Access, remove every scope outside the six-scope contract.
-- [ ] Add any missing scope from the contract and confirm an exact string match.
-- [ ] Save the Data Access configuration and allow time for the change to propagate.
-- [ ] Deploy the aligned build and record its version, build number, and test URL.
+- [x] Confirm all production authorization URLs and manifests use the exact six-scope contract above.
+- [x] Confirm the production OAuth client belongs to Google Cloud project `fitty-1780912487832` (`657456156321`).
+- [x] Confirm the deployed privacy policy contains OpenFit's Google Health API Limited Use affirmation.
+- [x] In Google Auth Platform → Data Access, remove the obsolete email and Google Health profile scopes.
+- [x] Confirm Data Access contains `openid`, the canonical profile permission, and the four exact read-only Google Health scopes.
+- [x] Save the Data Access configuration and update the in-review verification request.
+- [x] Deploy the aligned web build at `https://avg-francesco-fitty.expo.app` (deployment `d163l2iqaq`).
 - [ ] Revoke OpenFit access from the demonstration Google account to clear historical grants.
 - [ ] Start a fresh sign-in and inspect the complete consent details in English.
 - [ ] Confirm the fresh request contains all six scopes and no additional scope.
@@ -51,26 +51,29 @@ Complete every item against the deployed build:
 
 If Google displays a human-readable permission label instead of a raw scope string, expand the consent details and show the full permission list in the video.
 
-## Test Account Requirements
+## Reviewer Access
 
-Create a dedicated reviewer account with representative activity, sleep, body or heart, and nutrition data. Its records must cover the ranges shown in the video.
+OpenFit has no local application login, subscription, payment gate, or preconfigured tenant. A reviewer opens the public production URL and signs in through Google's own OAuth flow, so there is no OpenFit username or password to supply. State this explicitly in the email reply.
 
-Before submission, verify that the account:
+For the demonstration video, use a Google account with representative activity, sleep, body or heart, and nutrition data. Its records must cover the ranges shown in the video.
+
+If Google later specifically requests a dedicated populated account, create one and provide it only through Google's approved secure reviewer channel. Never place a Google password in the email thread.
+
+Before submission, verify that the demonstration account:
 
 - is active and can complete Google sign-in;
-- is included as an OAuth test user if the app remains in Testing;
-- has no two-step verification, phone challenge, passkey-only flow, payment, or subscription blocker;
+- can complete the fresh consent flow without an unexpected recovery challenge;
 - has accepted any required Google terms before the reviewer signs in;
-- can access every demonstrated OpenFit service without setup by the reviewer; and
+- can access every demonstrated OpenFit service; and
 - has been tested from a clean install or private browser session using the submitted build.
 
 Never put a password, recovery code, token, client secret, or real credential in this repository, the video, or the email reply. Supply credentials only through Google's secure reviewer field or another approved private channel.
 
 ## Step-by-Step Reviewer Navigation
 
-1. Install or open `[PRODUCTION_BUILD_OR_URL]`.
+1. Open `https://avg-francesco-fitty.expo.app`.
 2. On the OpenFit welcome screen, select **Sign in with Google**.
-3. Sign in with the test account supplied through `[SECURE_CREDENTIAL_CHANNEL]`.
+3. Sign in through Google's OAuth flow with the Google Account you use for review.
 4. Review the expanded consent details, then grant the six requested permissions.
 5. Return to OpenFit and wait for the personalized dashboard greeting and health data to load.
 6. Use **Today**, **7D**, **14D**, **30D**, and **90D** to show that the dashboard reads the authorized date range.
@@ -105,14 +108,14 @@ The narration should name the scope category when its feature appears. Do not sh
 
 ## Ready-to-Send Reply to Google
 
-Replace every bracketed placeholder and complete the pre-send checklist before sending. Do not paste credentials into this email.
+Insert the new video URL and complete the pre-send checklist before sending. Do not paste credentials into this email.
 
 ```text
-Subject: Re: Google OAuth verification — scope alignment and updated evidence for OpenFit
-
 Hello Third-Party Data Safety Team,
 
 Thank you for the guidance. We have updated OpenFit to follow least privilege and aligned the production OAuth request with the Data Access configuration in our Google Cloud project.
+
+We also redeployed the public homepage so it clearly explains OpenFit's purpose and uses the same OpenFit app name shown on the OAuth consent screen.
 
 The deployed application now requests only these scopes:
 
@@ -128,38 +131,35 @@ We removed email, Google Health profile and location access, and all Google Heal
 The application reads authorized data for its dashboard, date-range cards, widgets, Personal Health-Data Coach, and optional user-started Google-to-Apple Health export on iOS. It does not write to Google Health.
 
 Updated demonstration video: [DEMO_VIDEO_URL]
-Production build or URL: [PRODUCTION_BUILD_OR_URL]
-Build version: [VERSION_AND_BUILD]
+Production URL: https://avg-francesco-fitty.expo.app
+Production deployment: d163l2iqaq
 
-Active test credentials have been supplied through [SECURE_CREDENTIAL_CHANNEL]. They are not included in this email.
-
-The account has no phone, payment, or two-step-verification blocker and contains representative data for each requested Google Health category.
+OpenFit has no separate local login, subscription, payment requirement, or preconfigured tenant. Reviewers can open the public URL and use Google's OAuth flow with their Google Account; no OpenFit username or password is required.
 
 Reviewer navigation:
-1. Open [PRODUCTION_BUILD_OR_URL].
+1. Open https://avg-francesco-fitty.expo.app.
 2. Select “Sign in with Google.”
-3. Use the test account supplied through [SECURE_CREDENTIAL_CHANNEL].
-4. Expand and approve the displayed consent permissions.
-5. Review Activity and Metrics, then use the Today, 7D, 14D, 30D, and 90D ranges.
-6. Select Metrics → Edit to show sleep, heart/body, Calories eaten, and Hydration cards.
-7. Open Health coach from the dashboard header and submit a health-history question.
-8. Open Settings → Widgets to review widget metric selection.
-9. On iOS, open Settings → Apple Health and select Export to demonstrate the optional user-started Google-to-Apple Health flow.
+3. Expand and approve the displayed consent permissions.
+4. Review Activity and Metrics, then use the Today, 7D, 14D, 30D, and 90D ranges.
+5. Select Metrics → Edit to show sleep, heart/body, Calories eaten, and Hydration cards.
+6. Open Health coach from the dashboard header and submit a health-history question.
+7. Open Settings → Widgets to review widget metric selection.
+8. On iOS, open Settings → Apple Health and select Export to demonstrate the optional user-started Google-to-Apple Health flow.
 
 Please continue the verification review using the updated build and video. We are happy to clarify any remaining item.
 
 Best regards,
-[NAME]
-[ROLE_OR_COMPANY]
-[CONTACT_EMAIL]
+Francesco Oddo
+Developer, OpenFit
+oddofrancesco000@gmail.com
 ```
 
 ## Pre-Send Gate
 
-- [ ] The deployed runtime and Google Cloud Data Access list match the six-scope contract exactly.
+- [x] The deployed runtime and Google Cloud Data Access list match the six-scope contract exactly.
 - [ ] A fresh grant shows only the expected consent permissions.
 - [ ] The video URL is accessible without requesting access.
-- [ ] The submitted build or URL is reachable by the reviewer.
-- [ ] Secure test credentials were tested immediately before submission.
-- [ ] Every bracketed placeholder in the reply was replaced.
+- [x] The submitted production URL is reachable by the reviewer.
+- [x] The email explains that no separate OpenFit test credentials are required.
+- [ ] The demonstration video placeholder in the reply was replaced.
 - [ ] No credential or secret appears in the email, video, or repository.
