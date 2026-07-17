@@ -210,10 +210,12 @@ HEALTH_AGENT_API_TOKEN=use-the-same-secret-as-the-bff
 TOKEN_ENCRYPTION_KEY=replace-with-a-random-encryption-key
 ```
 
-For a deployed Worker, keep `STRAVA_CLIENT_SECRET`, `GARMIN_CLIENT_SECRET`, `HEALTH_AGENT_API_TOKEN`, and `TOKEN_ENCRYPTION_KEY` in Wrangler secrets rather than committed vars:
+For a deployed Worker, keep the Google OAuth credentials, provider client secrets, `HEALTH_AGENT_API_TOKEN`, and `TOKEN_ENCRYPTION_KEY` in Wrangler secrets rather than committed vars:
 
 ```bash
 cd workers/health-agent
+bunx wrangler secret put GOOGLE_CLIENT_ID
+bunx wrangler secret put GOOGLE_CLIENT_SECRET
 bunx wrangler secret put STRAVA_CLIENT_SECRET
 bunx wrangler secret put GARMIN_CLIENT_SECRET
 bunx wrangler secret put HEALTH_AGENT_API_TOKEN
