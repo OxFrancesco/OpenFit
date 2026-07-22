@@ -136,7 +136,7 @@ Maximum user-facing use of each requested scope:
 
 The Apple Health export is a separate user-started iOS action. It reads already-authorized Google data and writes selected weight, sleep, or workout records to Apple Health. It never writes to Google Health.
 
-Updated demonstration video: [DEMO_VIDEO_URL]
+Updated demonstration video: https://youtu.be/tGiubfB75UU
 Consent-screen permission details begin at: 00:43
 Production URL: https://avg-francesco-fitty.expo.app
 
@@ -172,8 +172,8 @@ oddofrancesco000@gmail.com
 
 - [x] The deployed runtime and Google Cloud Data Access list match the six-scope contract exactly.
 - [x] A fresh grant shows only the expected consent permissions.
-- [ ] The video URL is accessible without requesting access.
+- [x] The video URL is accessible without requesting access.
 - [x] The submitted production URL is reachable by the reviewer.
 - [x] The email explains that no separate OpenFit test credentials are required.
-- [ ] The demonstration video placeholder in the reply was replaced.
+- [x] The demonstration video placeholder in the reply was replaced.
 - [x] No reusable credential or secret appears in the email, video, or repository.
