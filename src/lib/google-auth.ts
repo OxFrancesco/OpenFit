@@ -23,7 +23,7 @@ export async function ensureFreshToken(token: GoogleTokenResponse): Promise<Goog
     throw new Error('Session expired. Sign in again.');
   }
 
-  const refreshed = await fetchApiJson<GoogleTokenResponse>('/api/google/refresh', {
+  const refreshed = await fetchApiJson<GoogleTokenResponse>('/oauth/refresh', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ refreshToken: token.refreshToken }),

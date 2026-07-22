@@ -4,7 +4,7 @@ import { buildGoogleAuthUrl, GOOGLE_HEALTH_SCOPES } from './google-oauth-request
 
 const EXPECTED_PRODUCTION_SCOPES = [
   'openid',
-  'profile',
+  'https://www.googleapis.com/auth/userinfo.profile',
   'https://www.googleapis.com/auth/googlehealth.activity_and_fitness.readonly',
   'https://www.googleapis.com/auth/googlehealth.sleep.readonly',
   'https://www.googleapis.com/auth/googlehealth.health_metrics_and_measurements.readonly',
