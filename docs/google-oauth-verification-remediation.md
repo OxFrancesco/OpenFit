@@ -99,7 +99,7 @@ Record one continuous, unedited-enough-to-follow walkthrough in English. Keep th
 7. Show the profile-based greeting, proving the `openid` and `https://www.googleapis.com/auth/userinfo.profile` experience.
 8. Show populated activity rings and the selected seven-day range.
 9. Show the populated Sleep, total-calorie, and heart-rate cards to evidence the remaining three Health scope categories.
-10. End in the production fitness experience.
+10. End on the production dashboard after showing the corresponding activity, sleep, nutrition, and health-metric cards.
 
 The narration should name the scope category when its feature appears. Do not show source code as a substitute for user-facing evidence.
 
