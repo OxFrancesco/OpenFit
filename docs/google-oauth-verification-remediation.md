@@ -112,7 +112,7 @@ Hello Third-Party Data Safety Team,
 
 Thank you for the guidance. We have updated OpenFit to follow least privilege and aligned the production OAuth request with the Data Access configuration in our Google Cloud project.
 
-We also redeployed the public homepage so it clearly explains OpenFit's purpose and uses the same OpenFit app name shown on the OAuth consent screen.
+We also redeployed the public homepage so it clearly explains OpenFit's purpose and identifies the production integration as OpenFit. Google Cloud branding remains under review, so Google may temporarily identify the OAuth client by its verified production domain during the review flow.
 
 The deployed application now requests only these scopes:
 
