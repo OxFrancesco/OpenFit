@@ -1,10 +1,10 @@
 # OpenFit Support Page Draft
 
-Publish this as the support page required by App Store Connect and Google Play, then replace `TODO_PUBLIC_SUPPORT_URL` in the metadata drafts.
+Hosted support page: https://avg-francesco-fitty.expo.app/support
 
 ## Contact
 
-Email: `TODO_SUPPORT_EMAIL`
+Email: oddofrancesco000@gmail.com
 
 ## Common Questions
 
@@ -30,4 +30,4 @@ Open the iOS Health app or iOS Settings, find OpenFit under Health permissions, 
 
 ### How do I request data deletion?
 
-Email `TODO_SUPPORT_EMAIL` with the subject `OpenFit data deletion request`. OpenFit stores app data locally on your device, but support can help with any server-side records if the hosted deployment adds them.
+Email oddofrancesco000@gmail.com with the subject `OpenFit data deletion request`. OpenFit stores app data locally on your device, but support can help with server-side records.
