@@ -2,13 +2,13 @@
 
 Effective date: July 14, 2026
 
-This draft must be reviewed and hosted before store submission. Replace all TODO values before publishing.
+This is a store-submission working copy. The hosted OpenFit privacy policy is the authoritative version and must be reviewed alongside this draft before submission.
 
 ## Who We Are
 
-OpenFit is provided by `TODO_LEGAL_NAME`.
+OpenFit is provided by Francesco Oddo.
 
-Contact: `TODO_SUPPORT_EMAIL`
+Contact: oddofrancesco000@gmail.com
 
 ## What OpenFit Does
 
@@ -77,7 +77,7 @@ We use reasonable technical and organizational safeguards to prevent unauthorize
 
 To delete locally stored Google user data, sign out of OpenFit and clear the app's data or uninstall it. On the web, sign out and clear site data for OpenFit in your browser.
 
-You can revoke OpenFit's access from your Google Account permissions. To request deletion of other data associated with your use of OpenFit, contact `TODO_SUPPORT_EMAIL`.
+You can revoke OpenFit's access from your Google Account permissions. To request deletion of other data associated with your use of OpenFit, contact oddofrancesco000@gmail.com.
 
 ## Sharing
 
@@ -109,4 +109,4 @@ We may update this policy as OpenFit changes. The hosted policy should show the 
 
 ## Contact
 
-For privacy or support questions, contact `TODO_SUPPORT_EMAIL`.
+For privacy or support questions, contact oddofrancesco000@gmail.com.

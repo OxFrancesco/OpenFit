@@ -8,7 +8,7 @@ Every production OAuth entry point must request exactly these six strings:
 
 ```text
 openid
-profile
+https://www.googleapis.com/auth/userinfo.profile
 https://www.googleapis.com/auth/googlehealth.activity_and_fitness.readonly
 https://www.googleapis.com/auth/googlehealth.sleep.readonly
 https://www.googleapis.com/auth/googlehealth.health_metrics_and_measurements.readonly
@@ -24,7 +24,7 @@ These descriptions connect each backend read to the complete production experien
 | Scope | Maximum user-facing use |
 | --- | --- |
 | `openid` | Authenticates the Google account and provides the stable Google subject used to associate the user with their OpenFit session and saved Personal Health-Data Coach conversation. |
-| `profile` | Reads the account's basic profile name so the dashboard can show a personalized greeting. OpenFit does not request the account email address. |
+| `https://www.googleapis.com/auth/userinfo.profile` | Reads the account's basic profile name so the dashboard can show a personalized greeting. OpenFit does not request the account email address. |
 | `googlehealth.activity_and_fitness.readonly` | Reads steps, energy, distance, active time, and workouts for activity rings, dashboard cards, date ranges, widgets, coach context, and user-started workout export to Apple Health on iOS. |
 | `googlehealth.sleep.readonly` | Reads sleep sessions and duration for the Sleep card, date-range views, coach context, and user-started sleep export to Apple Health on iOS. |
 | `googlehealth.health_metrics_and_measurements.readonly` | Reads heart and body measurements for dashboard cards, widgets, coach context, and user-started weight export to Apple Health on iOS. |
@@ -42,12 +42,12 @@ Complete every item against the deployed build:
 - [x] In Google Auth Platform → Data Access, remove the obsolete email and Google Health profile scopes.
 - [x] Confirm Data Access contains `openid`, the canonical profile permission, and the four exact read-only Google Health scopes.
 - [x] Save the Data Access configuration and update the in-review verification request.
-- [x] Deploy the aligned web build at `https://avg-francesco-fitty.expo.app` (deployment `d163l2iqaq`).
-- [ ] Revoke OpenFit access from the demonstration Google account to clear historical grants.
-- [ ] Start a fresh sign-in and inspect the complete consent details in English.
-- [ ] Confirm the fresh request contains all six scopes and no additional scope.
-- [ ] Exercise every feature in the demonstration shot list below with the same fresh grant.
-- [ ] Capture a new video only after the preceding checks pass.
+- [x] Deploy the aligned web build at `https://avg-francesco-fitty.expo.app`.
+- [x] Revoke OpenFit access from the demonstration Google account to clear historical grants.
+- [x] Start a fresh sign-in and inspect the complete consent details in English.
+- [x] Confirm the fresh request contains all six scopes and no additional scope.
+- [x] Exercise representative scope-backed dashboard features with the same fresh grant.
+- [x] Capture a new narrated Helium video after the preceding checks pass.
 
 If Google displays a human-readable permission label instead of a raw scope string, expand the consent details and show the full permission list in the video.
 
@@ -74,35 +74,32 @@ Never put a password, recovery code, token, client secret, or real credential in
 1. Open `https://avg-francesco-fitty.expo.app`.
 2. On the OpenFit welcome screen, select **Sign in with Google**.
 3. Sign in through Google's OAuth flow with the Google Account you use for review.
-4. Review the expanded consent details, then grant the six requested permissions.
-5. Return to OpenFit and wait for the personalized dashboard greeting and health data to load.
-6. Use **Today**, **7D**, **14D**, **30D**, and **90D** to show that the dashboard reads the authorized date range.
-7. In **Activity**, show rings for activity data. In **Metrics**, select **Edit** and add activity, sleep, heart or body, **Calories eaten**, and **Hydration** cards.
-8. Open the **Health coach** button in the dashboard header to use the Personal Health-Data Coach, then submit a question that uses the populated health history. Show the answer in the app.
-9. Return to the dashboard, open **Settings**, and use **Widgets → Edit** to select authorized read-only metrics for widget slots.
-10. On a physical iPhone, open **Settings → Apple Health**, choose a range, and select **Export**. Grant HealthKit access and show the user-started Google-to-Apple result.
-11. Return to **Settings → Account** to show the connected state. Do not sign out until all evidence is recorded.
+4. Review the complete permission list. If Google presents a **See the # services** link, select it first; Google's current granular-consent UI may instead show all four Health permissions directly.
+5. Select all four read-only Google Health permissions, then grant consent.
+6. Return to OpenFit and wait for the personalized dashboard greeting and health data to load.
+7. Use **Today**, **7D**, **14D**, **30D**, and **90D** to show that the dashboard reads the authorized date range.
+8. In **Activity**, show rings for activity data. In **Metrics**, select **Edit** and add activity, sleep, heart or body, **Calories eaten**, and **Hydration** cards.
+9. Open the **Health coach** button in the dashboard header to use the Personal Health-Data Coach, then submit a question that uses the populated health history. Show the answer in the app.
+10. Return to the dashboard, open **Settings**, and use **Widgets → Edit** to select authorized read-only metrics for widget slots.
+11. On a physical iPhone, open **Settings → Apple Health**, choose a range, and select **Export**. Grant HealthKit access and show the user-started Google-to-Apple result.
+12. Return to **Settings → Account** to show the connected state. Do not sign out until all evidence is recorded.
 
-If a submitted platform does not support Apple Health, label step 10 as an iOS-only feature and demonstrate it in a separate iPhone segment.
+If a submitted platform does not support Apple Health, label step 11 as an iOS-only feature and demonstrate it in a separate iPhone segment.
 
 ## Demonstration Video Shot List
 
 Record one continuous, unedited-enough-to-follow walkthrough in English. Keep the app name, OAuth project, submitted build, and reviewer account consistent.
 
-1. Show the production URL or build version and the OpenFit welcome screen.
+1. Show the full production URL and the OpenFit welcome screen.
 2. Start **Sign in with Google** using an account with no prior OpenFit grant.
-3. Show the Google account chooser and the complete expanded consent screen.
-4. Slowly show every displayed permission and confirm there are no location or write permissions.
-5. Approve consent and show the return to OpenFit.
-6. Show the profile-based greeting, proving the `openid` and `profile` experience.
-7. Show activity rings and activity cards across at least two date ranges.
-8. Show the Sleep card with populated test data.
-9. Show representative heart or body measurements.
-10. Add and show **Calories eaten** and **Hydration** cards.
-11. Ask the Personal Health-Data Coach a question that visibly uses authorized Google Health context.
-12. Open **Settings → Widgets**, select a health metric, and show the resulting widget if the recording platform supports it.
-13. On iOS, show the user-started **Apple Health → Export** flow for weight, sleep, or workouts.
-14. End on **Settings → Account** with the connected state visible.
+3. Show the Google account chooser and the basic-profile consent screen.
+4. Show the complete English granular-consent screen. If Google presents a **See the # services** link, select it; otherwise show the directly listed permissions.
+5. Pause on all four read-only Health permissions before selecting them, then show them selected.
+6. Approve consent and show the return to OpenFit.
+7. Show the profile-based greeting, proving the `openid` and `https://www.googleapis.com/auth/userinfo.profile` experience.
+8. Show populated activity rings and the selected seven-day range.
+9. Show the populated Sleep, total-calorie, and heart-rate cards to evidence the remaining three Health scope categories.
+10. End in the production fitness experience.
 
 The narration should name the scope category when its feature appears. Do not show source code as a substitute for user-facing evidence.
 
@@ -120,7 +117,7 @@ We also redeployed the public homepage so it clearly explains OpenFit's purpose 
 The deployed application now requests only these scopes:
 
 openid
-profile
+https://www.googleapis.com/auth/userinfo.profile
 https://www.googleapis.com/auth/googlehealth.activity_and_fitness.readonly
 https://www.googleapis.com/auth/googlehealth.sleep.readonly
 https://www.googleapis.com/auth/googlehealth.health_metrics_and_measurements.readonly
@@ -128,23 +125,40 @@ https://www.googleapis.com/auth/googlehealth.nutrition.readonly
 
 We removed email, Google Health profile and location access, and all Google Health write-only scopes.
 
-The application reads authorized data for its dashboard, date-range cards, widgets, Personal Health-Data Coach, and optional user-started Google-to-Apple Health export on iOS. It does not write to Google Health.
+Maximum user-facing use of each requested scope:
+
+- openid — Authenticates the Google Account and provides the stable Google subject used to associate the user with their OpenFit session and saved Personal Health-Data Coach conversation.
+- https://www.googleapis.com/auth/userinfo.profile — Reads the account's basic profile name so OpenFit can display a personalized dashboard greeting. OpenFit does not request the account email address.
+- googlehealth.activity_and_fitness.readonly — Reads steps, active energy, distance, active time, and workouts for activity rings, dashboard cards, selectable date ranges, widgets, Personal Health-Data Coach context, and the optional user-started workout export to Apple Health on iOS.
+- googlehealth.sleep.readonly — Reads sleep sessions and duration for the Sleep dashboard card, selectable date ranges, Personal Health-Data Coach context, and the optional user-started sleep export to Apple Health on iOS.
+- googlehealth.health_metrics_and_measurements.readonly — Reads heart and body measurements for dashboard cards, widgets, Personal Health-Data Coach context, and the optional user-started weight export to Apple Health on iOS.
+- googlehealth.nutrition.readonly — Reads calorie-consumption and hydration records for configurable Nutrition dashboard cards, widgets, and selectable date-range views.
+
+The Apple Health export is a separate user-started iOS action. It reads already-authorized Google data and writes selected weight, sleep, or workout records to Apple Health. It never writes to Google Health.
 
 Updated demonstration video: [DEMO_VIDEO_URL]
+Consent-screen permission details begin at: 00:23
 Production URL: https://avg-francesco-fitty.expo.app
-Production deployment: d163l2iqaq
+
+The new video starts with a fresh OAuth grant and shows Google's complete English granular-consent screen. In the current Google UI the four Health permissions are listed directly rather than behind a “See the # services” link. The video pauses on the complete unselected list, shows all four selected, then demonstrates the corresponding populated activity, sleep, nutrition, and health-metric dashboard features.
 
 OpenFit has no separate local login, subscription, payment requirement, or preconfigured tenant. Reviewers can open the public URL and use Google's OAuth flow with their Google Account; no OpenFit username or password is required.
 
 Reviewer navigation:
 1. Open https://avg-francesco-fitty.expo.app.
 2. Select “Sign in with Google.”
-3. Expand and approve the displayed consent permissions.
-4. Review Activity and Metrics, then use the Today, 7D, 14D, 30D, and 90D ranges.
-5. Select Metrics → Edit to show sleep, heart/body, Calories eaten, and Hydration cards.
-6. Open Health coach from the dashboard header and submit a health-history question.
-7. Open Settings → Widgets to review widget metric selection.
-8. On iOS, open Settings → Apple Health and select Export to demonstrate the optional user-started Google-to-Apple Health flow.
+3. Select the Google Account to use for review.
+4. Review the complete permission list. If Google presents a “See the # services” link, click it first; otherwise the four Health permissions are already listed directly.
+5. Select the four read-only Google Health permissions, then grant consent.
+6. Wait for OpenFit to return to the personalized dashboard and load the authorized data.
+7. Open Activity and use the Today, 7D, 14D, 30D, and 90D ranges to review activity-and-fitness data.
+8. In Metrics, select Edit and add or review Sleep, heart/body measurements, Calories eaten, and Hydration cards.
+9. Open Health coach from the dashboard header and submit a question using the authorized health history.
+10. Open Settings → Widgets to review the authorized metric selections.
+11. On iOS, open Settings → Apple Health, select a range, and select Export to demonstrate the optional user-started Google-to-Apple Health flow.
+12. Open Settings → Account to confirm that the Google Account is connected.
+
+If you specifically require a dedicated Google Account containing representative health data, please identify the approved secure reviewer channel through which it should be provided. We will not place a Google Account password or other credential in this email thread.
 
 Please continue the verification review using the updated build and video. We are happy to clarify any remaining item.
 
@@ -157,9 +171,9 @@ oddofrancesco000@gmail.com
 ## Pre-Send Gate
 
 - [x] The deployed runtime and Google Cloud Data Access list match the six-scope contract exactly.
-- [ ] A fresh grant shows only the expected consent permissions.
+- [x] A fresh grant shows only the expected consent permissions.
 - [ ] The video URL is accessible without requesting access.
 - [x] The submitted production URL is reachable by the reviewer.
 - [x] The email explains that no separate OpenFit test credentials are required.
 - [ ] The demonstration video placeholder in the reply was replaced.
-- [ ] No credential or secret appears in the email, video, or repository.
+- [x] No reusable credential or secret appears in the email, video, or repository.

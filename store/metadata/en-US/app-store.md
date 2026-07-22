@@ -11,8 +11,8 @@
 
 ## URLs
 
-- Support URL: `TODO_PUBLIC_SUPPORT_URL`
-- Privacy Policy URL: `TODO_PUBLIC_PRIVACY_URL`
+- Support URL: https://avg-francesco-fitty.expo.app/support
+- Privacy Policy URL: https://avg-francesco-fitty.expo.app/privacy
 - Marketing URL: optional
 
 ## Keywords
