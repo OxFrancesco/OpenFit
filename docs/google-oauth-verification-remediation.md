@@ -137,7 +137,7 @@ Maximum user-facing use of each requested scope:
 The Apple Health export is a separate user-started iOS action. It reads already-authorized Google data and writes selected weight, sleep, or workout records to Apple Health. It never writes to Google Health.
 
 Updated demonstration video: [DEMO_VIDEO_URL]
-Consent-screen permission details begin at: 00:23
+Consent-screen permission details begin at: 00:43
 Production URL: https://avg-francesco-fitty.expo.app
 
 The new video starts with a fresh OAuth grant and shows Google's complete English granular-consent screen. In the current Google UI the four Health permissions are listed directly rather than behind a “See the # services” link. The video pauses on the complete unselected list, shows all four selected, then demonstrates the corresponding populated activity, sleep, nutrition, and health-metric dashboard features.
