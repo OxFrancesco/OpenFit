@@ -138,7 +138,13 @@ function getOrigin(value: string | null | undefined) {
 }
 
 function isAllowedAppReturnUri(returnUri: string) {
-  if (returnUri === getGoogleAppReturnUri()) {
+  const allowedNativeReturnUris = new Set([
+    getGoogleAppReturnUri(),
+    'fitty://oauth',
+    'com.francescooddo.fitty://oauth',
+  ]);
+
+  if (allowedNativeReturnUris.has(returnUri)) {
     return true;
   }
 
@@ -151,11 +157,19 @@ function isAllowedAppReturnUri(returnUri: string) {
       )
     );
 
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+      return false;
+    }
+
+    if (allowedWebOrigins.has(url.origin)) {
+      return url.pathname === '/' && !url.search && !url.hash;
+    }
+
     return (
-      url.protocol === 'fitty:' ||
-      url.protocol === 'com.francescooddo.fitty:' ||
-      ((url.protocol === 'http:' || url.protocol === 'https:') &&
-        (localhostHosts.has(url.hostname) || allowedWebOrigins.has(url.origin)))
+      localhostHosts.has(url.hostname) &&
+      url.pathname === '/' &&
+      !url.search &&
+      !url.hash
     );
   } catch {
     return false;
@@ -185,9 +199,8 @@ export async function GET(request: Request) {
     );
   }
 
-  // Forward the one-time authorization code to the app, which exchanges it
-  // via /api/google/token. Keeping the handoff stateless matters on serverless
-  // hosting, where the callback and a follow-up request can hit different
-  // instances and an in-memory session would be lost.
+  // The app validates the returned state against its locally stored nonce before
+  // exchanging the one-time authorization code. Keeping the callback stateless
+  // also avoids relying on serverless instance affinity.
   return redirectToApp(buildStateAppRedirect(state, { state, code, status: 'success' }));
 }

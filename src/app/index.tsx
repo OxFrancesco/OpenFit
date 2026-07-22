@@ -1,4 +1,5 @@
 import { Link, useFocusEffect, type Href } from 'expo-router';
+import { Image } from 'expo-image';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown, FadeOut, LinearTransition } from 'react-native-reanimated';
@@ -76,7 +77,9 @@ export default function HomeScreen() {
   const [cardEditorOpen, setCardEditorOpen] = useState(false);
   const [ringEditorSlot, setRingEditorSlot] = useState<number | null>(null);
   const [showDebug, setShowDebug] = useState(false);
-  const [restoring, setRestoring] = useState(true);
+  // Render the public sign-in disclosure during web SSR so automated OAuth
+  // verification can inspect the app identity, purpose, and legal links.
+  const [restoring, setRestoring] = useState(Platform.OS !== 'web');
   // True while revalidating in the background — cached data stays on screen.
   const [, setRefreshing] = useState(false);
   // Guards against an older fetch overwriting a newer range's data.
@@ -601,7 +604,7 @@ export default function HomeScreen() {
               <LoadingDots color={theme.textSecondary} size={8} />
             </View>
           ) : (
-            <ActionButton label="Sign in with Google" disabled={!canLogin} onPress={startGoogleSignIn} />
+            <GoogleSignInButton disabled={!canLogin} onPress={startGoogleSignIn} />
           )}
 
           <Link href="/fitness" asChild>
@@ -852,30 +855,37 @@ function SectionHeader({ title, trailing }: { title: string; trailing?: ReactNod
   );
 }
 
-function ActionButton({
-  label,
+const GOOGLE_SIGN_IN_ASSET = Platform.select({
+  ios: require('../../assets/images/google-signin-ios.png'),
+  default: require('../../assets/images/google-signin-android-web.png'),
+});
+
+function GoogleSignInButton({
   onPress,
   disabled,
 }: {
-  label: string;
   onPress?: () => void;
   disabled?: boolean;
 }) {
-  const theme = useTheme();
+  const size = Platform.OS === 'ios' ? { width: 188, height: 44 } : { width: 180, height: 40 };
 
   return (
     <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Sign in with Google"
       disabled={disabled}
       onPress={onPress}
       style={({ pressed }) => [
-        styles.actionButton,
-        { backgroundColor: theme.text },
+        styles.googleSignInButton,
         disabled && styles.disabled,
         pressed && !disabled && styles.pressed,
       ]}>
-      <ThemedText type="default" style={{ color: theme.background, fontWeight: 600 }}>
-        {label}
-      </ThemedText>
+      <Image
+        accessible={false}
+        contentFit="contain"
+        source={GOOGLE_SIGN_IN_ASSET}
+        style={size}
+      />
     </Pressable>
   );
 }
@@ -1100,11 +1110,8 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     flexBasis: '40%',
   },
-  actionButton: {
+  googleSignInButton: {
     minHeight: 50,
-    paddingHorizontal: Spacing.five,
-    borderRadius: 25,
-    borderCurve: 'continuous',
     justifyContent: 'center',
     alignItems: 'center',
   },

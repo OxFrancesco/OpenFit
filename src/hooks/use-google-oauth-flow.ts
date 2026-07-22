@@ -15,6 +15,7 @@ import {
   loadPendingGoogleOAuth,
   savePendingGoogleOAuth,
 } from '@/lib/google-oauth-pending';
+import { googleOAuthStatesMatch } from '@/lib/google-oauth-pending-shared';
 import {
   GOOGLE_NATIVE_REDIRECT_URI,
   hasGoogleOAuthParams,
@@ -52,7 +53,8 @@ export function isGoogleConfigReady(
 }
 
 export async function fetchGoogleConfig() {
-  return fetchApiJson<GoogleHealthConfig>(`/api/google/config?platform=${Platform.OS}`);
+  const route = Platform.OS === 'web' ? '/oauth/config' : '/api/oauth/config';
+  return fetchApiJson<GoogleHealthConfig>(`${route}?platform=${Platform.OS}`);
 }
 
 export function useGoogleOAuthFlow<Range extends number>({
@@ -107,7 +109,7 @@ export function useGoogleOAuthFlow<Range extends number>({
         throw new Error('Google OAuth session was not found. Start sign-in again.');
       }
 
-      if (returnedState !== pendingState) {
+      if (!googleOAuthStatesMatch(returnedState, pendingState)) {
         throw new Error('Google OAuth state did not match. Try signing in again.');
       }
 
@@ -126,7 +128,7 @@ export function useGoogleOAuthFlow<Range extends number>({
       try {
         const authorizationCode = searchParams.get('code');
         const nextToken = authorizationCode
-          ? await fetchApiJson<GoogleTokenResponse>('/api/google/token', {
+          ? await fetchApiJson<GoogleTokenResponse>('/oauth/token', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ code: authorizationCode, redirectUri: activeConfig.redirectUri }),
@@ -173,7 +175,11 @@ export function useGoogleOAuthFlow<Range extends number>({
         }
       } finally {
         if (!ignore) {
-          router.replace('/');
+          if (Platform.OS === 'web') {
+            window.history.replaceState({}, document.title, '/');
+          } else {
+            router.replace('/');
+          }
         }
       }
     }
@@ -196,10 +202,14 @@ export function useGoogleOAuthFlow<Range extends number>({
       pendingStateRef.current = nextState;
       await savePendingGoogleOAuth(nextState);
 
-      const result = await WebBrowser.openAuthSessionAsync(
-        buildGoogleAuthUrl(activeConfig, nextState),
-        appReturnUri
-      );
+      const authorizationUrl = buildGoogleAuthUrl(activeConfig, nextState);
+
+      if (Platform.OS === 'web') {
+        window.location.assign(authorizationUrl);
+        return;
+      }
+
+      const result = await WebBrowser.openAuthSessionAsync(authorizationUrl, appReturnUri);
 
       if (result.type !== 'success') {
         pendingStateRef.current = null;

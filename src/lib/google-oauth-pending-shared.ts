@@ -9,6 +9,32 @@ export function createPendingGoogleOAuth(state: string): PendingGoogleOAuth {
   return { createdAt: Date.now(), state };
 }
 
+export function googleOAuthStatesMatch(returnedState: string, pendingState: string) {
+  if (returnedState === pendingState) {
+    return true;
+  }
+
+  const returnedSeparator = returnedState.indexOf('.');
+  const pendingSeparator = pendingState.indexOf('.');
+
+  if (
+    returnedSeparator <= 0 ||
+    pendingSeparator <= 0 ||
+    returnedState.slice(0, returnedSeparator) !== pendingState.slice(0, pendingSeparator)
+  ) {
+    return false;
+  }
+
+  try {
+    return (
+      decodeURIComponent(returnedState.slice(returnedSeparator + 1)) ===
+      decodeURIComponent(pendingState.slice(pendingSeparator + 1))
+    );
+  } catch {
+    return false;
+  }
+}
+
 export function parsePendingGoogleOAuth(raw: string): PendingGoogleOAuth | null {
   try {
     const value: unknown = JSON.parse(raw);
