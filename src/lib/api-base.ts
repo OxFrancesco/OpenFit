@@ -1,28 +1,9 @@
 import Constants from 'expo-constants';
 import { NativeModules, Platform } from 'react-native';
 
-function trimTrailingSlash(value: string) {
-  return value.replace(/\/+$/, '');
-}
+import { resolveExplicitApiBaseUrl } from '@/lib/api-base-core';
 
 const DEFAULT_PRODUCTION_API_BASE_URL = 'https://avg-francesco-fitty.expo.app';
-
-function isLocalApiBaseUrl(value: string) {
-  try {
-    const url = new URL(value);
-    const host = url.hostname.toLowerCase();
-    return (
-      host === 'localhost' ||
-      host === '127.0.0.1' ||
-      host === '0.0.0.0' ||
-      host.startsWith('10.') ||
-      host.startsWith('192.168.') ||
-      /^172\.(1[6-9]|2\d|3[0-1])\./.test(host)
-    );
-  } catch {
-    return false;
-  }
-}
 
 function hostUriToOrigin(hostUri: string) {
   const normalized = hostUri.replace(/^https?:\/\//, '');
@@ -43,14 +24,14 @@ function urlToOrigin(value?: string | null) {
 }
 
 export function getApiBaseUrl() {
-  const explicitBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL;
+  const explicitBaseUrl = resolveExplicitApiBaseUrl(
+    process.env.EXPO_PUBLIC_API_BASE_URL,
+    Platform.OS,
+    __DEV__
+  );
 
   if (explicitBaseUrl) {
-    const normalizedExplicitBaseUrl = trimTrailingSlash(explicitBaseUrl);
-
-    if (Platform.OS === 'web' || !isLocalApiBaseUrl(normalizedExplicitBaseUrl)) {
-      return normalizedExplicitBaseUrl;
-    }
+    return explicitBaseUrl;
   }
 
   if (!__DEV__) {
