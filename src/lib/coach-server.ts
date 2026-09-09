@@ -37,12 +37,12 @@ export async function requireGoogleSubject(request: Request) {
 
 export function getHealthAgentConfig() {
   const baseUrl = process.env.HEALTH_AGENT_URL?.replace(/\/+$/, '');
-  const token = process.env.HEALTH_AGENT_API_TOKEN;
+  const token = process.env.HEALTH_AGENT_CLERK_API_TOKEN || process.env.HEALTH_AGENT_API_TOKEN;
 
   if (!baseUrl || !token) {
     throw new CoachApiError(
       503,
-      'The health coach is not configured on this server yet. Set HEALTH_AGENT_URL and HEALTH_AGENT_API_TOKEN.'
+      'The health coach is temporarily unavailable. Please try again later.'
     );
   }
 

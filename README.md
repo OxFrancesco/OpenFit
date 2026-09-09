@@ -390,8 +390,30 @@ The app uses React Native Paper Material 3 controls, Roboto typography, tonal li
 colors, a bottom navigation bar on compact screens, and a navigation rail at widths of 840 or
 more. Android wallpaper-derived dynamic color is not currently enabled.
 
-OpenFit accounts use Clerk email codes. Google Health authorization remains a separate
-connection. Local workouts are device-wide and do not sync with Clerk accounts.
+OpenFit uses Clerk Google sign-in for the account and Google Health permissions. Email codes
+remain available for an account without Google Health. Local workouts are device-wide and do
+not sync with Clerk accounts. Signing out clears cached Health access and widgets.
+
+Configure the Google connection in Clerk with OpenFit's custom Google OAuth credentials and
+all four `googlehealth.*.readonly` scopes listed in `shared/clerk-google.ts`. Add Clerk's
+callback URL to the Google OAuth client and `fitty://sso-callback` to Clerk's native redirect URLs.
+The broker verifies the Clerk session, maps its Google external account, checks granted scopes,
+and returns only a short-lived Google access token. The coach stores the Clerk user reference
+under the existing Google subject, so prior conversations keep the same identity.
+
+EAS Hosting requires server credentials with **sensitive** visibility. Its **secret** variables
+are for build jobs and cannot be deployed to Hosting. Configure `CLERK_SECRET_KEY`,
+`HEALTH_AGENT_URL`, and `HEALTH_AGENT_CLERK_API_TOKEN` in the production environment.
+Set the same `HEALTH_AGENT_CLERK_API_TOKEN` and `CLERK_SECRET_KEY` as Worker secrets.
+The worker continues accepting the existing `HEALTH_AGENT_API_TOKEN` for older clients.
+Never prefix these credentials with `EXPO_PUBLIC_`.
+
+Export with the intended server environment, then deploy a project-relative output directory:
+
+```sh
+bunx eas-cli@latest env:exec production 'bunx expo export --platform web --output-dir dist'
+bunx eas-cli@latest deploy --prod --environment production --export-dir dist --non-interactive
+```
 
 Before starting a checkout, link the development Clerk application and pull its environment:
 

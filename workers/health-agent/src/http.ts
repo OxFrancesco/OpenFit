@@ -15,30 +15,24 @@ export class HttpError extends Error {
 type CorsEnv = {
   ALLOWED_ORIGINS?: string;
   HEALTH_AGENT_API_TOKEN?: string;
+  HEALTH_AGENT_CLERK_API_TOKEN?: string;
 };
 
-export async function requireBearerAuth(request: Request, env: CorsEnv): Promise<void> {
-  const expected = env.HEALTH_AGENT_API_TOKEN;
-  if (!expected) {
-    throw new HttpError(500, "HEALTH_AGENT_API_TOKEN is not configured");
-  }
+async function requireBridgeToken(token: string | undefined, env: CorsEnv): Promise<void> {
+  const expected = [env.HEALTH_AGENT_API_TOKEN, env.HEALTH_AGENT_CLERK_API_TOKEN]
+    .filter((value): value is string => Boolean(value));
+  if (!expected.length) throw new HttpError(500, "Agent authentication is not configured");
+  const matches = await Promise.all(expected.map(value => secureEqual(token, value)));
+  if (!matches.some(Boolean)) throw new HttpError(401, "Unauthorized");
+}
 
-  const header = request.headers.get("Authorization") ?? "";
-  const token = header.match(/^Bearer\s+(.+)$/i)?.[1];
-  if (!(await secureEqual(token, expected))) {
-    throw new HttpError(401, "Unauthorized");
-  }
+export async function requireBearerAuth(request: Request, env: CorsEnv): Promise<void> {
+  const token = request.headers.get("Authorization")?.match(/^Bearer\s+(.+)$/i)?.[1];
+  await requireBridgeToken(token, env);
 }
 
 export async function requireInternalAuth(request: Request, env: CorsEnv): Promise<void> {
-  const expected = env.HEALTH_AGENT_API_TOKEN;
-  if (!expected) {
-    throw new HttpError(500, "HEALTH_AGENT_API_TOKEN is not configured");
-  }
-
-  if (!(await secureEqual(request.headers.get("X-Fitty-Internal-Token") ?? undefined, expected))) {
-    throw new HttpError(401, "Unauthorized");
-  }
+  await requireBridgeToken(request.headers.get("X-Fitty-Internal-Token") ?? undefined, env);
 }
 
 export async function readJson(request: Request): Promise<unknown> {

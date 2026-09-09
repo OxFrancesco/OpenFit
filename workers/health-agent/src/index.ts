@@ -77,6 +77,7 @@ type AppEnv = Env & FitnessOAuthEnv & {
   GOOGLE_CLIENT_ID: string;
   GOOGLE_CLIENT_SECRET: string;
   HEALTH_AGENT_API_TOKEN: string;
+  HEALTH_AGENT_CLERK_API_TOKEN?: string;
   TOKEN_ENCRYPTION_KEY: string;
 };
 

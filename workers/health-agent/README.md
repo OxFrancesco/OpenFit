@@ -5,8 +5,8 @@ Cloudflare Worker Agent for reading and answering questions over Google Health A
 ## Shape
 
 - Runtime: Cloudflare Workers + Agents SDK + SQLite Durable Objects.
-- Auth: bearer token for API calls; the app passes its Google OAuth refresh token to the per-user agent.
-- Google tokens: refresh tokens are AES-GCM encrypted before being stored in agent state.
+- Auth: trusted BFF bearer token for API calls. The BFF verifies the Clerk session and derives the Google account identity.
+- Google tokens: new connections store a Clerk user reference. The worker requests fresh Google access through Clerk. Legacy refresh tokens remain AES-GCM encrypted until replaced.
 - Fitness provider tokens: Strava and Garmin access/refresh tokens are AES-GCM encrypted in the same per-user agent state.
 - OAuth transactions: one-use state and pending, client-bound completions expire after 10 minutes in agent SQLite. Provider codes are encrypted while pending; Garmin PKCE verifiers never leave the worker.
 - Coach messages: AES-GCM encrypted at rest, retained for up to 90 days, and user-deletable.
@@ -112,10 +112,10 @@ The caller may forward Strava's callback `scope` parameter to `/complete`, but `
 
 ## Notes
 
-The Expo app owns the Google consent flow and securely connects its refresh token to the matching per-user agent. The worker does not request Google OAuth scopes itself.
+Clerk owns Google consent and requests the four Health scopes. The Expo BFF connects the verified Clerk user to the existing agent named by Google subject. The worker checks that the Clerk user still owns that Google subject before accessing Health data.
 
 Strava and Garmin consent flows are owned by the worker through trusted server-side BFF routes. Client secrets and provider credentials must never be returned to or stored by the Expo app. Provider credentials are deliberately excluded from `answerQuestion`, `fetchHealthContext`, snapshots, and all model input.
 
-`HEALTH_AGENT_API_TOKEN` is a coarse bearer secret. Do not ship it in the mobile app; replace it with user-scoped auth or call this worker from trusted server code before exposing it to multiple users.
+`HEALTH_AGENT_API_TOKEN` and the Hosting-compatible `HEALTH_AGENT_CLERK_API_TOKEN` are server bridge secrets. Do not ship it in the mobile app; replace it with user-scoped auth or call this worker from trusted server code before exposing it to multiple users.
 
 The answer endpoint is not medical advice. It summarizes and compares the Google Health data available to the worker.
