@@ -15,6 +15,47 @@ export type SnapshotCacheEntry = {
   fetchedAt: number;
 };
 
+let accountId: string | null = null;
+let generation = 0;
+const pending = new Map<string, Promise<HealthSnapshot>>();
+
+export function bindSnapshotAccount(next: string | null) {
+  if (accountId !== next) {
+    clearSnapshotCache();
+    accountId = next;
+  }
+}
+
+export async function loadCachedSnapshot(
+  days: number,
+  metricIds: string[],
+  loader: () => Promise<HealthSnapshot>,
+  force = false
+): Promise<HealthSnapshot> {
+  const cached = getCachedSnapshot(days);
+  if (
+    !force &&
+    cached &&
+    isSnapshotFresh(cached) &&
+    metricIds.every((id) => cached.snapshot.metrics.some((metric) => metric.id === id))
+  )
+    return cached.snapshot;
+  const key = `${days}:${[...metricIds].sort().join(',')}`;
+  const existing = pending.get(key);
+  if (existing) return existing;
+  const version = generation;
+  const request = loader()
+    .then((snapshot) => {
+      if (version === generation) setCachedSnapshot(days, snapshot);
+      return snapshot;
+    })
+    .finally(() => {
+      if (pending.get(key) === request) pending.delete(key);
+    });
+  pending.set(key, request);
+  return request;
+}
+
 const cache = new Map<number, SnapshotCacheEntry>();
 
 export function getCachedSnapshot(days: number): SnapshotCacheEntry | null {
@@ -31,5 +72,7 @@ export function isSnapshotFresh(entry: SnapshotCacheEntry) {
 
 /** Drop everything — call on sign-out or account change. */
 export function clearSnapshotCache() {
+  ++generation;
+  pending.clear();
   cache.clear();
 }

@@ -22,6 +22,8 @@ import { getApiBaseUrl } from '@/lib/api-base';
 import { DEBUG_ENABLED } from '@/lib/debug';
 import { ensureFreshToken, fetchClerkGoogleToken } from '@/lib/google-auth';
 import {
+  bindSnapshotAccount,
+  loadCachedSnapshot,
   clearSnapshotCache,
   getCachedSnapshot,
   isSnapshotFresh,
@@ -33,11 +35,7 @@ import { defaultPrefs, type DashboardPrefs } from '@/lib/dashboard-prefs-core';
 import { getDefaultGoal, getMetricDef, SLEEP_CARD_ID } from '@/lib/metric-catalog';
 import { GOOGLE_NATIVE_REDIRECT_URI } from '@/lib/google-oauth-return';
 import { clearStoredToken, loadStoredToken, saveStoredToken } from '@/lib/token-store';
-import {
-  buildWidgetData,
-  emptyWidgetData,
-  getWidgetMetricIds,
-} from '@/lib/widget-data';
+import { buildWidgetData, emptyWidgetData, getWidgetMetricIds } from '@/lib/widget-data';
 import { syncWidgets } from '@/lib/widget-sync';
 import {
   fetchGoogleHealthSnapshot,
@@ -81,6 +79,8 @@ export default function HomeScreen() {
   const [prefs, setPrefs] = useState<DashboardPrefs>(defaultPrefs);
   const [cardEditorOpen, setCardEditorOpen] = useState(false);
   const [ringEditorSlot, setRingEditorSlot] = useState<number | null>(null);
+  const accountRef = useRef<string | null | undefined>(undefined);
+  const rangeRef = useRef<DashboardRangeDays>(1);
   const [showDebug, setShowDebug] = useState(false);
   // Render the public sign-in disclosure during web SSR so automated OAuth
   // verification can inspect the app identity, purpose, and legal links.
@@ -103,7 +103,9 @@ export default function HomeScreen() {
 
     for (const id of [
       ...prefs.rings,
-      ...getWidgetMetricIds(prefs, { includeConfigurable: Platform.OS === 'ios' }),
+      ...getWidgetMetricIds(prefs, {
+        includeConfigurable: Platform.OS === 'ios',
+      }),
       ...prefs.cards,
     ]) {
       if (id !== SLEEP_CARD_ID && getMetricDef(id)) {
@@ -279,12 +281,14 @@ export default function HomeScreen() {
       }
 
       try {
-        const healthSnapshot = await fetchGoogleHealthSnapshot(accessToken, {
+        const ids = neededIdsRef.current;
+        const healthSnapshot = await loadCachedSnapshot(
           days,
-          metricIds: neededIdsRef.current,
-        });
+          ids,
+          () => fetchGoogleHealthSnapshot(accessToken, { days, metricIds: ids }),
+          options?.force
+        );
         if (requestIdRef.current === requestId) {
-          setCachedSnapshot(days, healthSnapshot);
           applySnapshot(healthSnapshot);
           setHealthState('loaded');
         }
@@ -304,35 +308,78 @@ export default function HomeScreen() {
     [applySnapshot]
   );
 
-  useFocusEffect(useCallback(() => {
-    if (!accountLoaded) return;
-    let active = true;
-    ++requestIdRef.current;
-    setToken(null);
-    applySnapshot(null);
-    clearSnapshotCache();
-    if (!userId) {
-      setRestoring(false);
-      setAuthState('idle');
-      return;
-    }
-    setRestoring(true);
-    void fetchClerkGoogleToken().then(async fresh => {
-      if (!active) return;
-      await saveStoredToken(fresh);
-      if (!active) return;
-      setToken(fresh);
-      setAuthState('loaded');
-      setError(null);
-      void loadHealthData(fresh.accessToken, 1);
-    }).catch(cause => {
-      if (active) {
-        setAuthState('idle');
-        setError(cause instanceof Error ? cause.message : 'Reconnect Google Health.');
+  useFocusEffect(
+    useCallback(() => {
+      if (!accountLoaded) return;
+      let active = true;
+      bindSnapshotAccount(userId ?? null);
+      const accountChanged = accountRef.current !== userId;
+      accountRef.current = userId;
+      if (accountChanged) {
+        ++requestIdRef.current;
+        setToken(null);
+        applySnapshot(null);
       }
-    }).finally(() => { if (active) setRestoring(false); });
-    return () => { active = false; ++requestIdRef.current; };
-  }, [accountLoaded, userId, applySnapshot, loadHealthData]));
+      if (!userId) {
+        setRestoring(false);
+        setAuthState('idle');
+        return;
+      }
+      if (accountChanged) setRestoring(true);
+      void loadStoredToken()
+        .then((stored) =>
+          stored?.clerkUserId === userId ? ensureFreshToken(stored) : fetchClerkGoogleToken()
+        )
+        .then(async (fresh) => {
+          if (!active) return;
+          await saveStoredToken(fresh);
+          if (!active) return;
+          setToken(fresh);
+          setAuthState('loaded');
+          setError(null);
+          void loadHealthData(fresh.accessToken, rangeRef.current);
+        })
+        .catch((cause) => {
+          if (active) {
+            setAuthState('idle');
+            setError(cause instanceof Error ? cause.message : 'Reconnect Google Health.');
+          }
+        })
+        .finally(() => {
+          if (active) setRestoring(false);
+        });
+      return () => {
+        active = false;
+        ++requestIdRef.current;
+      };
+    }, [accountLoaded, userId, applySnapshot, loadHealthData])
+  );
+
+  useEffect(() => {
+    if (!token || !userId) return;
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      for (const days of [7, 14, 30, 90] as const) {
+        if (cancelled) return;
+        try {
+          const fresh = await ensureFreshToken(token);
+          if (cancelled) return;
+          await loadCachedSnapshot(days, neededIds, () =>
+            fetchGoogleHealthSnapshot(fresh.accessToken, {
+              days,
+              metricIds: neededIds,
+            })
+          );
+        } catch {
+          return;
+        }
+      }
+    }, 1500);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [token, userId, neededIds]);
 
   const startGoogleSignIn = async () => {
     setAuthState('loading');
@@ -358,11 +405,13 @@ export default function HomeScreen() {
         return;
       }
 
+      const requestId = requestIdRef.current;
       let current = token;
 
       try {
         current = await ensureFreshToken(token);
       } catch (refreshError) {
+        if (accountRef.current !== token.clerkUserId || requestIdRef.current !== requestId) return;
         // Refresh token revoked or expired — force a new sign-in.
         await clearStoredToken().catch(() => undefined);
         clearSnapshotCache();
@@ -375,6 +424,12 @@ export default function HomeScreen() {
         return;
       }
 
+      if (
+        rangeRef.current !== days ||
+        accountRef.current !== token.clerkUserId ||
+        requestIdRef.current !== requestId
+      )
+        return;
       if (current !== token) {
         setToken(current);
         saveStoredToken(current).catch(() => undefined);
@@ -394,9 +449,7 @@ export default function HomeScreen() {
       return;
     }
 
-    const missing = neededIds.filter(
-      (id) => !current.metrics.some((metric) => metric.id === id)
-    );
+    const missing = neededIds.filter((id) => !current.metrics.some((metric) => metric.id === id));
 
     if (!missing.length) {
       return;
@@ -435,10 +488,15 @@ export default function HomeScreen() {
 
   const updateRangeDays = useCallback(
     (days: DashboardRangeDays) => {
+      rangeRef.current = days;
+      ++requestIdRef.current;
       setRangeDays(days);
+      const cached = getCachedSnapshot(days);
+      applySnapshot(cached?.snapshot ?? null);
+      setHealthState(cached ? 'loaded' : 'loading');
       loadWithFreshToken(days);
     },
-    [loadWithFreshToken]
+    [applySnapshot, loadWithFreshToken]
   );
 
   const canLogin = authState !== 'loading';
@@ -483,7 +541,9 @@ export default function HomeScreen() {
 
     (async () => {
       const daySnapshot = rangeDays === 1 ? snapshot : (getCachedSnapshot(1)?.snapshot ?? null);
-      const widgetIds = getWidgetMetricIds(prefs, { includeConfigurable: Platform.OS === 'ios' });
+      const widgetIds = getWidgetMetricIds(prefs, {
+        includeConfigurable: Platform.OS === 'ios',
+      });
       let metrics = daySnapshot?.metrics ?? [];
       const missing = widgetIds.filter((id) => !metrics.some((metric) => metric.id === id));
 
@@ -559,35 +619,69 @@ export default function HomeScreen() {
     }
 
     return (
-      <ScrollView style={{ flex: 1, backgroundColor: theme.background }} contentContainerStyle={styles.signInScroll}>
+      <ScrollView
+        style={{ flex: 1, backgroundColor: theme.background }}
+        contentContainerStyle={styles.signInScroll}
+      >
         <View style={styles.signInContent}>
           <ThemedText type="title">Health overview</ThemedText>
           <View style={[styles.connectionCard, { backgroundColor: theme.primaryContainer }]}>
             <MaterialIcon name="monitor-heart" size={40} color={theme.onPrimaryContainer} />
-            <ThemedText type="subtitle" style={{ color: theme.onPrimaryContainer }}>Connect Google Health</ThemedText>
+            <ThemedText type="subtitle" style={{ color: theme.onPrimaryContainer }}>
+              Connect Google Health
+            </ThemedText>
             <ThemedText style={{ color: theme.onPrimaryContainer }}>
               See your activity, sleep and other health data in one place.
             </ThemedText>
-            {authState === 'loading' ? <LoadingDots color={theme.primary} /> : <GoogleSignInButton disabled={!canLogin} onPress={startGoogleSignIn} />}
+            {authState === 'loading' ? (
+              <LoadingDots color={theme.primary} />
+            ) : (
+              <GoogleSignInButton disabled={!canLogin} onPress={startGoogleSignIn} />
+            )}
           </View>
           {error && <ErrorBanner message={error} />}
-          <List.Accordion title="How your data is used" left={props => <List.Icon {...props} icon="shield-lock-outline" />} style={{ backgroundColor: theme.surfaceContainer, borderRadius: 24 }}>
+          <List.Accordion
+            title="How your data is used"
+            left={(props) => <List.Icon {...props} icon="shield-lock-outline" />}
+            style={{
+              backgroundColor: theme.surfaceContainer,
+              borderRadius: 24,
+            }}
+          >
             <View style={styles.signInDisclosureBlock}>
               <ThemedText type="small" themeColor="textSecondary">
-                OpenFit reads the Google Health data you authorize for your dashboard, widgets and optional Apple Health export. The optional coach processes relevant health data and your questions using Cloudflare AI services.
+                OpenFit reads the Google Health data you authorize for your dashboard, widgets and
+                optional Apple Health export. The optional coach processes relevant health data and
+                your questions using Cloudflare AI services.
               </ThemedText>
               <ThemedText type="small" themeColor="textSecondary">
-                Clerk manages your Google connection and refreshes access when needed. Encrypted messages are retained for up to 90 days. Voice recordings go to ElevenLabs for transcription. OpenFit does not sell your Google Health data or share it with advertisers.
+                Clerk manages your Google connection and refreshes access when needed. Encrypted
+                messages are retained for up to 90 days. Voice recordings go to ElevenLabs for
+                transcription. OpenFit does not sell your Google Health data or share it with
+                advertisers.
               </ThemedText>
             </View>
           </List.Accordion>
           <View style={styles.legalLinks}>
-            {LEGAL_LINKS.map(link => <Link key={link.label} href={link.href} asChild><Button mode="text">{link.label}</Button></Link>)}
+            {LEGAL_LINKS.map((link) => (
+              <Link key={link.label} href={link.href} asChild>
+                <Button mode="text">{link.label}</Button>
+              </Link>
+            ))}
           </View>
-          {DEBUG_ENABLED && <DebugPanel expanded={showDebug} onToggle={() => setShowDebug(v => !v)} items={[
-            { label: 'API server', value: getApiBaseUrl() },
-            { label: 'OAuth client', value: config?.clientId ? 'Configured' : configError ?? 'Loading' },
-          ]} />}
+          {DEBUG_ENABLED && (
+            <DebugPanel
+              expanded={showDebug}
+              onToggle={() => setShowDebug((v) => !v)}
+              items={[
+                { label: 'API server', value: getApiBaseUrl() },
+                {
+                  label: 'OAuth client',
+                  value: config?.clientId ? 'Configured' : (configError ?? 'Loading'),
+                },
+              ]}
+            />
+          )}
         </View>
       </ScrollView>
     );
@@ -622,10 +716,12 @@ export default function HomeScreen() {
           <Section index={0}>
             <View style={styles.headerBlock}>
               <View style={styles.headerTopRow}>
-                <ThemedText type="smallBold" style={[styles.dateLabel, { color: theme.textSecondary }]}>
+                <ThemedText
+                  type="smallBold"
+                  style={[styles.dateLabel, { color: theme.textSecondary }]}
+                >
                   {todayStr}
                 </ThemedText>
-
               </View>
               <ThemedText type="title">{greeting}</ThemedText>
             </View>
@@ -637,100 +733,126 @@ export default function HomeScreen() {
           <Section index={1}>
             <SegmentedButtons
               value={String(rangeDays)}
-              onValueChange={value => { const option = RANGE_OPTIONS.find(item => String(item.value) === value); if (option) updateRangeDays(option.value); }}
-              buttons={RANGE_OPTIONS.map(option => ({ value: String(option.value), label: option.label, disabled: initialLoading }))}
+              onValueChange={(value) => {
+                const option = RANGE_OPTIONS.find((item) => String(item.value) === value);
+                if (option) updateRangeDays(option.value);
+              }}
+              buttons={RANGE_OPTIONS.map((option) => ({
+                value: String(option.value),
+                label: option.label,
+                disabled: false,
+              }))}
             />
-        </Section>
+          </Section>
 
-        {/* ── Activity rings ── */}
-        <Section index={2}>
-          <SectionHeader
-            title="Activity"
-            trailing={
-              <TextButton label="Edit" color={theme.text} onPress={() => setRingEditorSlot(0)} />
-            }
-          />
-          <View style={[styles.ringsCard, { backgroundColor: theme.card }]}>
-            <ActivityRings
-              slots={ringSlots}
-              editingSlot={ringEditorSlot}
-              onEditSlot={setRingEditorSlot}
-              onSelectMetric={selectRingMetric}
-              onChangeGoal={changeRingGoal}
+          {/* ── Activity rings ── */}
+          <Section index={2}>
+            <SectionHeader
+              title="Activity"
+              trailing={
+                <TextButton label="Edit" color={theme.text} onPress={() => setRingEditorSlot(0)} />
+              }
             />
-          </View>
-        </Section>
+            <View style={[styles.ringsCard, { backgroundColor: theme.card }]}>
+              <ActivityRings
+                slots={ringSlots}
+                days={rangeDays}
+                editingSlot={ringEditorSlot}
+                onEditSlot={setRingEditorSlot}
+                onSelectMetric={selectRingMetric}
+                onChangeGoal={changeRingGoal}
+              />
+            </View>
+          </Section>
 
-        {/* ── Metrics (user-curated cards) ── */}
-        <Section index={3}>
-          <SectionHeader
-            title="Metrics"
-            trailing={
-              <TextButton label="Edit" color={theme.text} onPress={() => setCardEditorOpen(true)} />
-            }
+          {/* ── Metrics (user-curated cards) ── */}
+          <Section index={3}>
+            <SectionHeader
+              title="Metrics"
+              trailing={
+                <TextButton
+                  label="Edit"
+                  color={theme.text}
+                  onPress={() => setCardEditorOpen(true)}
+                />
+              }
+            />
+            {initialLoading ? (
+              <View style={styles.metricGrid}>
+                {[0, 1, 2, 3].map((slot) => (
+                  <SkeletonCard key={slot} />
+                ))}
+              </View>
+            ) : prefs.cards.length === 0 ? (
+              <ThemedText type="small" style={{ color: theme.textSecondary, textAlign: 'center' }}>
+                Choose the health metrics you want to see.
+              </ThemedText>
+            ) : (
+              <View style={styles.metricGrid}>
+                {prefs.cards.map((id) => {
+                  if (id === SLEEP_CARD_ID) {
+                    return (
+                      <Animated.View
+                        key={id}
+                        entering={FadeInDown.duration(350)}
+                        exiting={FadeOut.duration(200)}
+                        layout={LinearTransition.springify().damping(18)}
+                        style={styles.sleepSlot}
+                      >
+                        <SleepCard sessions={snapshot?.sleepSessions ?? []} />
+                      </Animated.View>
+                    );
+                  }
+
+                  const def = getMetricDef(id);
+                  return def ? (
+                    <MetricCard key={id} def={def} metric={metricsMap[id]} days={rangeDays} />
+                  ) : null;
+                })}
+              </View>
+            )}
+          </Section>
+
+          <CardEditor
+            visible={cardEditorOpen}
+            selected={prefs.cards}
+            onToggle={toggleCard}
+            onClose={() => setCardEditorOpen(false)}
           />
-          {initialLoading ? (
-            <View style={styles.metricGrid}>
-              {[0, 1, 2, 3].map((slot) => (
-                <SkeletonCard key={slot} />
-              ))}
-            </View>
-          ) : prefs.cards.length === 0 ? (
-            <ThemedText
-              type="small"
-              style={{ color: theme.textSecondary, textAlign: 'center' }}
-            >
-              Choose the health metrics you want to see.
-            </ThemedText>
-          ) : (
-            <View style={styles.metricGrid}>
-              {prefs.cards.map((id) => {
-                if (id === SLEEP_CARD_ID) {
-                  return (
-                    <Animated.View
-                      key={id}
-                      entering={FadeInDown.duration(350)}
-                      exiting={FadeOut.duration(200)}
-                      layout={LinearTransition.springify().damping(18)}
-                      style={styles.sleepSlot}
-                    >
-                      <SleepCard sessions={snapshot?.sleepSessions ?? []} />
-                    </Animated.View>
-                  );
-                }
 
-                const def = getMetricDef(id);
-                return def ? <MetricCard key={id} def={def} metric={metricsMap[id]} /> : null;
-              })}
-            </View>
+          {/* ── Connection diagnostics (debug builds only) ── */}
+          {DEBUG_ENABLED && (
+            <DebugPanel
+              expanded={showDebug}
+              onToggle={() => setShowDebug((v) => !v)}
+              items={[
+                { label: 'Status', value: 'Connected' },
+                { label: 'API server', value: getApiBaseUrl() },
+                {
+                  label: 'Redirect URI',
+                  value: config?.redirectUri ?? 'Loading',
+                },
+                {
+                  label: 'Callback URI',
+                  value: config?.appReturnUri ?? GOOGLE_NATIVE_REDIRECT_URI,
+                },
+                {
+                  label: 'OAuth client',
+                  value: config?.clientId ? 'Configured' : (configError ?? 'Loading'),
+                },
+                {
+                  label: 'Client secret',
+                  value: config?.hasClientSecret ? 'Server only' : 'Missing',
+                },
+                {
+                  label: 'Range',
+                  value: snapshot?.rangeLabel ?? `Last ${rangeDays} days`,
+                },
+              ]}
+            />
           )}
-        </Section>
-
-        <CardEditor
-          visible={cardEditorOpen}
-          selected={prefs.cards}
-          onToggle={toggleCard}
-          onClose={() => setCardEditorOpen(false)}
-        />
-
-        {/* ── Connection diagnostics (debug builds only) ── */}
-        {DEBUG_ENABLED && (
-          <DebugPanel
-            expanded={showDebug}
-            onToggle={() => setShowDebug((v) => !v)}
-            items={[
-              { label: 'Status', value: 'Connected' },
-              { label: 'API server', value: getApiBaseUrl() },
-              { label: 'Redirect URI', value: config?.redirectUri ?? 'Loading' },
-              { label: 'Callback URI', value: config?.appReturnUri ?? GOOGLE_NATIVE_REDIRECT_URI },
-              { label: 'OAuth client', value: config?.clientId ? 'Configured' : configError ?? 'Loading' },
-              { label: 'Client secret', value: config?.hasClientSecret ? 'Server only' : 'Missing' },
-              { label: 'Range', value: snapshot?.rangeLabel ?? `Last ${rangeDays} days` },
-            ]}
-          />
-        )}
-      </View>
-    </ScrollView>
+        </View>
+      </ScrollView>
     </View>
   );
 }
@@ -763,13 +885,7 @@ const GOOGLE_SIGN_IN_ASSET = Platform.select({
   default: require('../../assets/images/google-signin-android-web.png'),
 });
 
-function GoogleSignInButton({
-  onPress,
-  disabled,
-}: {
-  onPress?: () => void;
-  disabled?: boolean;
-}) {
+function GoogleSignInButton({ onPress, disabled }: { onPress?: () => void; disabled?: boolean }) {
   const size = Platform.OS === 'ios' ? { width: 188, height: 44 } : { width: 180, height: 40 };
 
   return (
@@ -782,13 +898,9 @@ function GoogleSignInButton({
         styles.googleSignInButton,
         disabled && styles.disabled,
         pressed && !disabled && styles.pressed,
-      ]}>
-      <Image
-        accessible={false}
-        contentFit="contain"
-        source={GOOGLE_SIGN_IN_ASSET}
-        style={size}
-      />
+      ]}
+    >
+      <Image accessible={false} contentFit="contain" source={GOOGLE_SIGN_IN_ASSET} style={size} />
     </Pressable>
   );
 }
@@ -871,7 +983,9 @@ function ErrorBanner({ message }: { message: string }) {
 
 // ─── Helpers (unchanged logic) ─────────────────────────────────────────────────
 
-function decodeIdToken(idToken: string): { name?: string; given_name?: string; email?: string } | null {
+function decodeIdToken(
+  idToken: string
+): { name?: string; given_name?: string; email?: string } | null {
   try {
     const parts = idToken.split('.');
     if (parts.length !== 3) {
@@ -885,7 +999,12 @@ function decodeIdToken(idToken: string): { name?: string; given_name?: string; e
     }
 
     let decoded = '';
-    const atobFunc = typeof atob === 'function' ? atob : (typeof globalThis !== 'undefined' && typeof (globalThis as any).atob === 'function' ? (globalThis as any).atob : null);
+    const atobFunc =
+      typeof atob === 'function'
+        ? atob
+        : typeof globalThis !== 'undefined' && typeof (globalThis as any).atob === 'function'
+          ? (globalThis as any).atob
+          : null;
     if (atobFunc) {
       decoded = atobFunc(base64);
     } else {
@@ -906,10 +1025,11 @@ function decodeIdToken(idToken: string): { name?: string; given_name?: string; e
       const bytes = new Uint8Array(bufferLength - p);
       let coords = 0;
       for (let i = 0; i < len; i += 4) {
-        const chunk = (lookup[base64.charCodeAt(i)] << 18) |
-                      (lookup[base64.charCodeAt(i + 1)] << 12) |
-                      (lookup[base64.charCodeAt(i + 2)] << 6) |
-                      lookup[base64.charCodeAt(i + 3)];
+        const chunk =
+          (lookup[base64.charCodeAt(i)] << 18) |
+          (lookup[base64.charCodeAt(i + 1)] << 12) |
+          (lookup[base64.charCodeAt(i + 2)] << 6) |
+          lookup[base64.charCodeAt(i + 3)];
 
         bytes[coords++] = (chunk >> 16) & 255;
         if (coords < bytes.length) bytes[coords++] = (chunk >> 8) & 255;
@@ -964,7 +1084,6 @@ const styles = StyleSheet.create({
     gap: Spacing.three,
   },
   dateLabel: {
-
     letterSpacing: 0,
   },
   headerButtons: {

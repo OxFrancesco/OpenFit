@@ -1,117 +1,25 @@
-import { useRef, useState } from 'react';
-import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  View,
-  type NativeScrollEvent,
-  type NativeSyntheticEvent,
-} from 'react-native';
-
-import { ThemedText } from '@/components/themed-text';
+import { StyleSheet, View } from 'react-native';
+import { CardPager } from './card-pager';
+import { ThemedText } from './themed-text';
 import { MetricCardMinHeight, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import type { SleepSummary } from '@/lib/google-health';
 
-const PAGE_HEIGHT = 36;
-
 export function SleepCard({ sessions }: { sessions: SleepSummary[] }) {
   const theme = useTheme();
-  const [page, setPage] = useState(0);
-  const pagerRef = useRef<ScrollView>(null);
-
-  const onPageScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const next = Math.round(event.nativeEvent.contentOffset.y / PAGE_HEIGHT);
-    setPage(Math.min(Math.max(next, 0), sessions.length - 1));
-  };
-
-  const goToPage = (next: number) => {
-    const clamped = Math.min(Math.max(next, 0), sessions.length - 1);
-    setPage(clamped);
-    pagerRef.current?.scrollTo({ y: clamped * PAGE_HEIGHT, animated: true });
-  };
-
-  const current = sessions[page];
-
+  const pages = sessions.length
+    ? sessions.map((session) => ({
+        id: session.id,
+        value: <ThemedText type="metric">{formatSleepDuration(session)}</ThemedText>,
+        detail: `${session.kind === 'nap' ? 'Nap' : 'Night'}${session.endTime ? ` · ${formatDateTime(session.endTime)}` : ''}`,
+      }))
+    : [{ id: 'empty', value: <ThemedText type="metric">--</ThemedText> }];
   return (
     <View style={[styles.card, { backgroundColor: theme.card }]}>
-      <View style={{ gap: Spacing.one }}>
-        <View style={styles.headerRow}>
-          <ThemedText type="caption" style={{ color: theme.textSecondary }}>
-            Sleep
-          </ThemedText>
-          {sessions.length > 1 && (
-            <ThemedText type="caption" style={{ color: theme.textSecondary }}>
-              {page + 1} of {sessions.length}
-            </ThemedText>
-          )}
-        </View>
-
-        {sessions.length === 0 ? (
-          <View style={styles.page}>
-            <ThemedText type="metric">--</ThemedText>
-          </View>
-        ) : (
-          <View style={styles.body}>
-            <ScrollView
-              ref={pagerRef}
-              style={{ height: PAGE_HEIGHT, flexGrow: 0, flexShrink: 1 }}
-              pagingEnabled
-              nestedScrollEnabled
-              showsVerticalScrollIndicator={false}
-              onMomentumScrollEnd={onPageScroll}
-            >
-              {sessions.map((session) => (
-                <View key={session.id} style={styles.page}>
-                  <ThemedText type="metric">{formatSleepDuration(session)}</ThemedText>
-                </View>
-              ))}
-            </ScrollView>
-
-            {sessions.length > 1 && (
-              <View style={styles.arrows}>
-                <Pressable hitSlop={8} disabled={page === 0} onPress={() => goToPage(page - 1)}>
-                  <ThemedText
-                    style={[
-                      styles.arrow,
-                      { color: theme.textSecondary },
-                      page === 0 && styles.arrowDisabled,
-                    ]}
-                  >
-                    ▲
-                  </ThemedText>
-                </Pressable>
-                <Pressable
-                  hitSlop={8}
-                  disabled={page === sessions.length - 1}
-                  onPress={() => goToPage(page + 1)}
-                >
-                  <ThemedText
-                    style={[
-                      styles.arrow,
-                      { color: theme.textSecondary },
-                      page === sessions.length - 1 && styles.arrowDisabled,
-                    ]}
-                  >
-                    ▼
-                  </ThemedText>
-                </Pressable>
-              </View>
-            )}
-          </View>
-        )}
-      </View>
-
-      {current && (
-        <ThemedText
-          type="caption"
-          style={{ color: theme.textSecondary }}
-          numberOfLines={1}
-        >
-          {current.kind === 'nap' ? 'Nap' : 'Night'}
-          {current.endTime ? ` · ended ${formatDateTime(current.endTime)}` : ''}
-        </ThemedText>
-      )}
+      <ThemedText type="caption" style={{ color: theme.textSecondary }}>
+        Sleep
+      </ThemedText>
+      <CardPager key={pages.map((page) => page.id).join(',')} pages={pages} label="sleep session" />
     </View>
   );
 }
@@ -151,35 +59,5 @@ const styles = StyleSheet.create({
     padding: Spacing.three,
     justifyContent: 'space-between',
     gap: Spacing.one,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: Spacing.two,
-  },
-  body: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: Spacing.two,
-  },
-  page: {
-    height: PAGE_HEIGHT,
-    justifyContent: 'center',
-  },
-  arrows: {
-    gap: Spacing.one,
-    alignItems: 'center',
-  },
-  arrow: {
-    fontSize: 9,
-    lineHeight: 11,
-  },
-  arrowDisabled: {
-    opacity: 0.25,
-  },
-  label: {
-    paddingHorizontal: Spacing.one,
   },
 });

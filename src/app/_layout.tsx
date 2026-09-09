@@ -2,7 +2,7 @@ import { ClerkProvider, useUser } from '@clerk/expo';
 import { tokenCache } from '@clerk/expo/token-cache';
 import { Stack, router } from 'expo-router';
 import { View, useWindowDimensions } from 'react-native';
-import { Appbar, ActivityIndicator } from 'react-native-paper';
+import { Appbar, ActivityIndicator, Avatar } from 'react-native-paper';
 import {
   useFonts,
   Roboto_400Regular,
@@ -28,7 +28,11 @@ export default function RootLayout() {
 
 function AppLayout() {
   const { user } = useUser();
-  const [loaded, error] = useFonts({ Roboto_400Regular, Roboto_500Medium, Roboto_700Bold });
+  const [loaded, error] = useFonts({
+    Roboto_400Regular,
+    Roboto_500Medium,
+    Roboto_700Bold,
+  });
   const theme = useTheme();
   const scheme = useColorScheme();
   const { width } = useWindowDimensions();
@@ -38,7 +42,13 @@ function AppLayout() {
     <MaterialProvider>
       <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
       {!loaded && !error ? (
-        <View style={{ flex: 1, backgroundColor: theme.background, justifyContent: 'center' }}>
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: theme.background,
+            justifyContent: 'center',
+          }}
+        >
           <ActivityIndicator />
         </View>
       ) : (
@@ -59,7 +69,7 @@ function AppLayout() {
                   <Appbar.Header mode="small" style={{ backgroundColor: theme.background }}>
                     {back &&
                     !['index', 'fitness', 'coach', 'settings', 'log-workout'].includes(
-                      route.name,
+                      route.name
                     ) ? (
                       <Appbar.BackAction
                         accessibilityLabel="Go back"
@@ -72,12 +82,19 @@ function AppLayout() {
                     />
                     {route.name === 'index' ? (
                       <Appbar.Action
-                        icon="account-circle-outline"
+                        icon={
+                          user?.imageUrl
+                            ? () => <Avatar.Image size={32} source={{ uri: user.imageUrl }} />
+                            : 'account-circle-outline'
+                        }
                         accessibilityLabel={user ? 'Your OpenFit account' : 'Sign in to OpenFit'}
                         onPress={() => router.push('/account')}
                       />
                     ) : null}
-                    {options.headerRight?.({ canGoBack: Boolean(back), tintColor: theme.primary })}
+                    {options.headerRight?.({
+                      canGoBack: Boolean(back),
+                      tintColor: theme.primary,
+                    })}
                   </Appbar.Header>
                 ),
               }}

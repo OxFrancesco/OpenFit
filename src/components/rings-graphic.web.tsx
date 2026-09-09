@@ -6,7 +6,7 @@ import Animated, {
   withDelay,
   withTiming,
 } from 'react-native-reanimated';
-import Svg, { Path } from 'react-native-svg';
+import Svg, { G, Path } from 'react-native-svg';
 
 import { lighten, makeHeartGeometry, type RingProgress, SIZE, STROKE } from './rings-geometry';
 
@@ -31,9 +31,8 @@ function ProgressRing({ index, ring }: { index: number; ring: RingProgress }) {
   const { points, perimeter } = useMemo(() => makeHeartGeometry(index), [index]);
   const d = useMemo(
     () =>
-      points
-        .map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(2)} ${p.y.toFixed(2)}`)
-        .join(' ') + ' Z',
+      points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(2)} ${p.y.toFixed(2)}`).join(' ') +
+      ' Z',
     [points]
   );
   const progress = useSharedValue(0);
@@ -42,7 +41,10 @@ function ProgressRing({ index, ring }: { index: number; ring: RingProgress }) {
   useEffect(() => {
     progress.value = withDelay(
       ring.delay,
-      withTiming(ring.progress, { duration: 1100, easing: Easing.out(Easing.cubic) })
+      withTiming(ring.progress, {
+        duration: 1100,
+        easing: Easing.out(Easing.cubic),
+      })
     );
   }, [ring.progress, ring.delay, progress]);
 
@@ -62,10 +64,20 @@ function ProgressRing({ index, ring }: { index: number; ring: RingProgress }) {
 
   return (
     <>
+      <G transform="translate(0 3)">
+        <Path
+          d={d}
+          stroke="#000000"
+          strokeWidth={STROKE + 3}
+          strokeOpacity={0.45}
+          strokeLinejoin="round"
+          fill="none"
+        />
+      </G>
       {/* Track */}
       <Path
         d={d}
-        stroke={ring.color + '26'}
+        stroke={ring.color + '38'}
         strokeWidth={STROKE}
         strokeLinejoin="round"
         fill="none"
@@ -101,6 +113,27 @@ function ProgressRing({ index, ring }: { index: number; ring: RingProgress }) {
         animatedProps={overlapLapProps}
         fill="none"
       />
+      <G transform="translate(0 -2)">
+        <AnimatedPath
+          d={d}
+          stroke={lighten(ring.color, 0.7)}
+          strokeWidth={3}
+          strokeOpacity={0.7}
+          strokeLinejoin="round"
+          animatedProps={fullLapProps}
+          fill="none"
+        />
+        <AnimatedPath
+          d={d}
+          stroke={lighten(ring.color, 0.7)}
+          strokeWidth={3}
+          strokeOpacity={0.7}
+          strokeLinecap="round"
+          strokeDasharray={`${perimeter}`}
+          animatedProps={firstLapProps}
+          fill="none"
+        />
+      </G>
     </>
   );
 }

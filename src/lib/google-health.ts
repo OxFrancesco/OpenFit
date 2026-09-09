@@ -1,3 +1,5 @@
+import { rollupWindows } from './health-rollup-windows';
+import { metricDailyValues, type MetricDay } from './metric-series';
 import {
   DEFAULT_CARD_IDS,
   DEFAULT_RING_IDS,
@@ -37,6 +39,7 @@ export type HealthMetric = {
   unit: string;
   status: 'loaded' | 'empty' | 'error';
   error?: string;
+  dailyValues?: MetricDay[];
 };
 
 export type ExerciseSummary = {
@@ -234,29 +237,35 @@ function aggregateValues(values: (number | null)[], aggregate: MetricDef['aggreg
 }
 
 async function fetchRollupValue(accessToken: string, def: MetricDef, start: Date, end: Date) {
-  const body = {
-    range: {
-      start: toCivilDateTime(start),
-      end: toCivilDateTime(end),
-    },
-    windowSizeDays: 1,
-  };
-
-  const data = await googleHealthFetch<{ rollupDataPoints?: DataPoint[] }>(
-    accessToken,
-    `/users/me/dataTypes/${def.id}/dataPoints:dailyRollUp`,
-    {
-      method: 'POST',
-      body: JSON.stringify(body),
-    }
+  const responses = await Promise.all(
+    rollupWindows(def.id, start, end).map((window) =>
+      googleHealthFetch<{ rollupDataPoints?: DataPoint[] }>(
+        accessToken,
+        `/users/me/dataTypes/${def.id}/dataPoints:dailyRollUp`,
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            range: { start: toCivilDateTime(window.start), end: toCivilDateTime(window.end) },
+            windowSizeDays: 1,
+          }),
+        }
+      )
+    )
   );
+  const data = {
+    rollupDataPoints: responses.flatMap((response) => response.rollupDataPoints ?? []),
+  };
 
   const values = (data.rollupDataPoints ?? []).map((point) => {
     const rollupValue = point[def.field];
     return rollupValue ? def.extract(rollupValue) : null;
   });
 
-  return { value: aggregateValues(values, def.aggregate), raw: data };
+  return {
+    value: aggregateValues(values, def.aggregate),
+    dailyValues: metricDailyValues(data.rollupDataPoints ?? [], def),
+    raw: data,
+  };
 }
 
 async function fetchDailyValue(accessToken: string, def: MetricDef, start: Date, end: Date) {
@@ -274,11 +283,15 @@ async function fetchDailyValue(accessToken: string, def: MetricDef, start: Date,
     return payload ? def.extract(payload) : null;
   });
 
-  return { value: aggregateValues(values, def.aggregate), raw: data };
+  return {
+    value: aggregateValues(values, def.aggregate),
+    dailyValues: metricDailyValues(data.dataPoints ?? [], def),
+    raw: data,
+  };
 }
 
 async function fetchMetric(accessToken: string, def: MetricDef, start: Date, end: Date) {
-  const { value, raw } =
+  const { value, dailyValues, raw } =
     def.kind === 'daily'
       ? await fetchDailyValue(accessToken, def, start, end)
       : await fetchRollupValue(accessToken, def, start, end);
@@ -290,6 +303,7 @@ async function fetchMetric(accessToken: string, def: MetricDef, start: Date, end
       value,
       unit: def.unit,
       status: value === null ? 'empty' : 'loaded',
+      dailyValues,
     } satisfies HealthMetric,
     raw,
   };
@@ -330,7 +344,9 @@ export async function fetchHealthMetrics(accessToken: string, metricIds: string[
         raw[def.id] = result.raw;
         return result.metric;
       } catch (error) {
-        raw[def.id] = { error: String(error instanceof Error ? error.message : error) };
+        raw[def.id] = {
+          error: String(error instanceof Error ? error.message : error),
+        };
         return {
           id: def.id,
           label: def.label,
@@ -370,7 +386,9 @@ function normalizeExercise(point: DataPoint): ExerciseSummary {
   const metrics = exercise.metricsSummary ?? {};
 
   return {
-    id: String(point.name ?? `${exercise.displayName ?? 'exercise'}-${exercise.interval?.startTime}`),
+    id: String(
+      point.name ?? `${exercise.displayName ?? 'exercise'}-${exercise.interval?.startTime}`
+    ),
     name: String(exercise.displayName ?? exercise.exerciseType ?? 'Exercise'),
     type: String(exercise.exerciseType ?? 'OTHER'),
     startTime: exercise.interval?.startTime,
@@ -475,7 +493,10 @@ function normalizeExerciseForAppleSync(point: DataPoint): GoogleHealthAppleSyncR
   return {
     kind: 'workout',
     sourceDataType: 'exercise',
-    sourceId: googleSourceId(point, `exercise-${startTime}-${endTime}-${exercise.exerciseType ?? 'OTHER'}`),
+    sourceId: googleSourceId(
+      point,
+      `exercise-${startTime}-${endTime}-${exercise.exerciseType ?? 'OTHER'}`
+    ),
     startTime,
     endTime,
     name: String(exercise.displayName ?? exercise.exerciseType ?? 'Workout'),
@@ -527,21 +548,23 @@ export async function fetchGoogleHealthSnapshot(
   const exerciseFilter = `exercise.interval.civil_start_time >= "${toIsoDate(start)}" AND exercise.interval.civil_start_time < "${toIsoDate(end)}"`;
   const sleepFilter = `sleep.interval.civil_end_time >= "${toIsoDate(start)}" AND sleep.interval.civil_end_time < "${toIsoDate(end)}"`;
 
-  const [{ metrics, raw: rollups }, exerciseData, sleepData] =
-    await Promise.all([
-      fetchHealthMetrics(accessToken, metricIds, days),
-      googleHealthFetch<{ dataPoints?: DataPoint[] }>(
-        accessToken,
-        `/users/me/dataTypes/exercise/dataPoints?page_size=50&filter=${encodeURIComponent(exerciseFilter)}`
-      ).catch((error) => ({ error: error instanceof Error ? error.message : String(error) })),
-      googleHealthFetch<{ dataPoints?: DataPoint[] }>(
-        accessToken,
-        `/users/me/dataTypes/sleep/dataPoints?page_size=20&filter=${encodeURIComponent(sleepFilter)}`
-      ).catch((error) => ({ error: error instanceof Error ? error.message : String(error) })),
-    ]);
+  const [{ metrics, raw: rollups }, exerciseData, sleepData] = await Promise.all([
+    fetchHealthMetrics(accessToken, metricIds, days),
+    googleHealthFetch<{ dataPoints?: DataPoint[] }>(
+      accessToken,
+      `/users/me/dataTypes/exercise/dataPoints?page_size=50&filter=${encodeURIComponent(exerciseFilter)}`
+    ).catch((error) => ({
+      error: error instanceof Error ? error.message : String(error),
+    })),
+    fetchGoogleHealthDataPoints(accessToken, 'sleep', sleepFilter, 100)
+      .then((dataPoints) => ({ dataPoints }))
+      .catch((error) => ({
+        error: error instanceof Error ? error.message : String(error),
+      })),
+  ]);
 
-  const exercisePoints = 'dataPoints' in exerciseData ? exerciseData.dataPoints ?? [] : [];
-  const sleepPoints = 'dataPoints' in sleepData ? sleepData.dataPoints ?? [] : [];
+  const exercisePoints = 'dataPoints' in exerciseData ? (exerciseData.dataPoints ?? []) : [];
+  const sleepPoints = 'dataPoints' in sleepData ? (sleepData.dataPoints ?? []) : [];
 
   return {
     metrics,
@@ -599,5 +622,7 @@ export function formatMetricValue(metric: HealthMetric) {
   }
 
   const digits = getMetricDef(metric.id)?.fractionDigits ?? 0;
-  return metric.value.toLocaleString(undefined, { maximumFractionDigits: digits });
+  return metric.value.toLocaleString(undefined, {
+    maximumFractionDigits: digits,
+  });
 }

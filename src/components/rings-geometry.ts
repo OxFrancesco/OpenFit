@@ -3,14 +3,14 @@
  * implementation (native) and the SVG fallback (web).
  */
 
-export const SIZE = 168;
-export const STROKE = 10;
-export const GAP = 3;
+export const SIZE = 176;
+export const STROKE = 11;
+export const GAP = 5;
 export const CENTER = SIZE / 2;
 export const RADII = [
-  (SIZE - STROKE) / 2,
-  (SIZE - STROKE) / 2 - (STROKE + GAP),
-  (SIZE - STROKE) / 2 - 2 * (STROKE + GAP),
+  (SIZE - STROKE) / 2 - 6,
+  (SIZE - STROKE) / 2 - 6 - (STROKE + GAP),
+  (SIZE - STROKE) / 2 - 6 - 2 * (STROKE + GAP),
 ] as const;
 
 export type RingProgress = {
@@ -45,7 +45,8 @@ function rawHeartPoint(t: number): Point {
   const cy = 2.5 - 14 * Math.cos(t);
   // Distance from the notch (t = 0), wrapped
   const dt = Math.abs(((t + Math.PI) % (2 * Math.PI)) - Math.PI);
-  const dip = dt < NOTCH_SPREAD ? NOTCH_DEPTH * Math.cos((Math.PI * dt) / (2 * NOTCH_SPREAD)) ** 2 : 0;
+  const dip =
+    dt < NOTCH_SPREAD ? NOTCH_DEPTH * Math.cos((Math.PI * dt) / (2 * NOTCH_SPREAD)) ** 2 : 0;
   return {
     x: (1 - ROUNDNESS) * hx + ROUNDNESS * cx,
     y: (1 - ROUNDNESS) * hy + ROUNDNESS * cy + dip,
@@ -71,7 +72,10 @@ function traceHeart(radius: number): Point[] {
 
   const scale = radius / maxX;
   const offsetY = CENTER - ((minY + maxY) / 2) * scale;
-  return raw.map((p) => ({ x: CENTER + p.x * scale, y: offsetY + p.y * scale }));
+  return raw.map((p) => ({
+    x: CENTER + p.x * scale,
+    y: offsetY + p.y * scale,
+  }));
 }
 
 function distToSegmentSq(p: Point, a: Point, b: Point) {

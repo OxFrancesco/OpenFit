@@ -5,6 +5,7 @@ import { RingsGraphic } from '@/components/rings-graphic';
 import { type RingProgress } from '@/components/rings-geometry';
 import { ThemedText } from '@/components/themed-text';
 import { RingColors, Spacing } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 import { getMetricDef, RING_ELIGIBLE_METRICS } from '@/lib/metric-catalog';
 
@@ -22,17 +23,21 @@ function formatAmount(value: number | null, fractionDigits = 0) {
     return '--';
   }
 
-  return value.toLocaleString(undefined, { maximumFractionDigits: fractionDigits });
+  return value.toLocaleString(undefined, {
+    maximumFractionDigits: fractionDigits,
+  });
 }
 
 export function ActivityRings({
   slots,
+  days = 1,
   editingSlot,
   onEditSlot,
   onSelectMetric,
   onChangeGoal,
 }: {
   slots: RingSlot[];
+  days?: number;
   /** Slot whose editor sheet is open, or null when closed */
   editingSlot: number | null;
   onEditSlot: (slot: number | null) => void;
@@ -42,13 +47,15 @@ export function ActivityRings({
   onChangeGoal: (metricId: string, goal: number) => void;
 }) {
   const theme = useTheme();
+  const dark = useColorScheme() === 'dark';
+  const colors = dark ? ['#45BC94', '#F38D6F', '#AEC35A'] : SLOT_COLORS;
 
   const ringProgress: RingProgress[] = slots.map((slot, i) => ({
     // Keyed by metric so switching a slot's metric replays the fill animation.
     key: `${i}-${slot.metricId}`,
-    color: SLOT_COLORS[i],
+    color: colors[i],
     // Uncapped — past 100% the heart wraps onto a second lap.
-    progress: slot.value !== null && slot.goal > 0 ? slot.value / slot.goal : 0,
+    progress: slot.value !== null && slot.goal > 0 ? slot.value / (slot.goal * days) : 0,
     delay: i * 150,
   }));
 
@@ -80,11 +87,11 @@ export function ActivityRings({
                 {def?.shortLabel ?? def?.label ?? slot.metricId}
               </ThemedText>
               <View style={styles.valueRow}>
-                <ThemedText style={[styles.value, { color: SLOT_COLORS[i] }]}>
+                <ThemedText style={[styles.value, { color: dark ? theme.text : colors[i] }]}>
                   {formatAmount(slot.value, def?.fractionDigits)}
                 </ThemedText>
                 <ThemedText type="small" style={{ color: theme.textSecondary }}>
-                  /{formatAmount(slot.goal, def?.fractionDigits)}
+                  /{formatAmount(slot.goal * days, def?.fractionDigits)}
                 </ThemedText>
               </View>
             </Pressable>
@@ -115,7 +122,7 @@ export function ActivityRings({
                         onPress={() => onEditSlot(i)}
                         style={[
                           styles.switchDot,
-                          { backgroundColor: SLOT_COLORS[i] },
+                          { backgroundColor: colors[i] },
                           i !== editingSlot && styles.switchDotInactive,
                         ]}
                       />
@@ -170,7 +177,9 @@ export function ActivityRings({
                         onPress={() => onSelectMetric(editingSlot, def.id)}
                         style={({ pressed }) => [
                           styles.option,
-                          selected && { backgroundColor: theme.backgroundSelected },
+                          selected && {
+                            backgroundColor: theme.backgroundSelected,
+                          },
                           pressed && styles.pressed,
                         ]}
                       >
@@ -178,7 +187,7 @@ export function ActivityRings({
                           icon={def.icon}
                           glyph={def.glyph}
                           size={18}
-                          color={selected ? SLOT_COLORS[editingSlot] : theme.textSecondary}
+                          color={selected ? colors[editingSlot] : theme.textSecondary}
                         />
                         <View style={styles.optionText}>
                           <ThemedText type="default" style={selected && styles.optionSelected}>
@@ -189,7 +198,7 @@ export function ActivityRings({
                           </ThemedText>
                         </View>
                         {selected && (
-                          <ThemedText type="default" style={{ color: SLOT_COLORS[editingSlot] }}>
+                          <ThemedText type="default" style={{ color: colors[editingSlot] }}>
                             ✓
                           </ThemedText>
                         )}
@@ -244,7 +253,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: Spacing.five,
+    gap: Spacing.three,
   },
   legend: {
     gap: Spacing.three,

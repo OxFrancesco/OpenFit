@@ -36,9 +36,9 @@ import {
  */
 
 /** How far the loop color shifts toward white at full progress */
-const HEAD_TINT = 0.32;
+const HEAD_TINT = 0.42;
 /** Second-lap end tint — brighter still, so the overlap reads as raised */
-const LAP_TINT = 0.55;
+const LAP_TINT = 0.65;
 /** Tip shadow is nudged ahead of the head, along the direction of travel */
 const SHADOW_LEAD = 3;
 
@@ -70,7 +70,10 @@ function Ring({ index, ring }: { index: number; ring: RingProgress }) {
   useEffect(() => {
     progress.value = withDelay(
       ring.delay,
-      withTiming(ring.progress, { duration: 1100, easing: Easing.out(Easing.cubic) })
+      withTiming(ring.progress, {
+        duration: 1100,
+        easing: Easing.out(Easing.cubic),
+      })
     );
   }, [ring.progress, ring.delay, progress]);
 
@@ -112,13 +115,25 @@ function Ring({ index, ring }: { index: number; ring: RingProgress }) {
 
   return (
     <>
+      <Group transform={[{ translateY: 3 }]}>
+        <Path
+          path={basePath}
+          style="stroke"
+          strokeWidth={STROKE + 3}
+          strokeJoin="round"
+          color="#000000"
+          opacity={0.65}
+        >
+          <BlurMask blur={2} style="normal" />
+        </Path>
+      </Group>
       {/* Track */}
       <Path
         path={basePath}
         style="stroke"
         strokeWidth={STROKE}
         strokeJoin="round"
-        color={ring.color + '26'}
+        color={ring.color + '38'}
       />
 
       {/* Completed lap stays underneath once the goal is passed */}
@@ -130,7 +145,13 @@ function Ring({ index, ring }: { index: number; ring: RingProgress }) {
 
       {/* First lap: progress sweep brightening toward the head */}
       <Group opacity={firstLapOpacity}>
-        <Path path={arcPath} style="stroke" strokeWidth={STROKE} strokeCap="round" strokeJoin="round">
+        <Path
+          path={arcPath}
+          style="stroke"
+          strokeWidth={STROKE}
+          strokeCap="round"
+          strokeJoin="round"
+        >
           <SweepGradient c={vec(CENTER, CENTER)} colors={[ring.color, headTint]} />
         </Path>
       </Group>
@@ -146,23 +167,55 @@ function Ring({ index, ring }: { index: number; ring: RingProgress }) {
           color="black"
           opacity={0.28}
         >
-          <BlurMask blur={5} style="normal" />
+          <BlurMask blur={2} style="normal" />
         </Path>
-        <Path path={arcPath} style="stroke" strokeWidth={STROKE} strokeCap="round" strokeJoin="round">
+        <Path
+          path={arcPath}
+          style="stroke"
+          strokeWidth={STROKE}
+          strokeCap="round"
+          strokeJoin="round"
+        >
           <SweepGradient c={vec(CENTER, CENTER)} colors={[headTint, lapTint]} />
         </Path>
       </Group>
 
+      <Group clip={band}>
+        <Group transform={[{ translateY: -2 }]}>
+          <Group opacity={fullLapOpacity}>
+            <Path
+              path={basePath}
+              style="stroke"
+              strokeWidth={3}
+              color={lighten(ring.color, 0.7)}
+              opacity={0.65}
+            />
+          </Group>
+          <Group opacity={firstLapOpacity}>
+            <Path
+              path={arcPath}
+              style="stroke"
+              strokeWidth={3}
+              strokeCap="round"
+              color={lighten(ring.color, 0.7)}
+              opacity={0.8}
+            />
+          </Group>
+        </Group>
+      </Group>
       <Group opacity={headOpacity}>
         {/* Soft shadow cast by the head onto whatever sits beneath it */}
         <Group clip={band}>
-          <Circle c={shadowPos} r={STROKE / 2} color="black" opacity={0.3}>
-            <BlurMask blur={5} style="normal" />
+          <Circle c={shadowPos} r={STROKE / 2} color="black" opacity={0.65}>
+            <BlurMask blur={2} style="normal" />
           </Circle>
         </Group>
 
         {/* Head cap drawn over the shadow */}
         <Circle c={headPos} r={STROKE / 2} color={headColor} />
+        <Group transform={[{ translateY: -2 }]}>
+          <Circle c={headPos} r={STROKE / 5} color="white" opacity={0.65} />
+        </Group>
       </Group>
     </>
   );
