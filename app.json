@@ -466,27 +466,30 @@
               "minHeight": "80dp",
               "targetCellWidth": 1,
               "targetCellHeight": 1,
-              "updatePeriodMillis": 1800000
+              "updatePeriodMillis": 1800000,
+              "resizeMode": "horizontal|vertical"
             },
             {
               "name": "TwoValues",
               "label": "2:2 Trackers",
               "description": "Two main trackers together",
-              "minWidth": "180dp",
-              "minHeight": "180dp",
+              "minWidth": "120dp",
+              "minHeight": "140dp",
               "targetCellWidth": 2,
               "targetCellHeight": 2,
-              "updatePeriodMillis": 1800000
+              "updatePeriodMillis": 1800000,
+              "resizeMode": "horizontal|vertical"
             },
             {
               "name": "RingValues",
               "label": "2:3 Hearts + Stats",
               "description": "Hearts plus three tracker stats",
-              "minWidth": "180dp",
-              "minHeight": "250dp",
+              "minWidth": "140dp",
+              "minHeight": "180dp",
               "targetCellWidth": 2,
-              "targetCellHeight": 3,
-              "updatePeriodMillis": 1800000
+              "targetCellHeight": 2,
+              "updatePeriodMillis": 1800000,
+              "resizeMode": "horizontal|vertical"
             }
           ]
         }

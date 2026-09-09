@@ -1,7 +1,7 @@
 import type { WidgetData, WidgetSlot } from '@/lib/widget-data';
 
-export const CARD_BACKGROUND = '#1C1C1E';
-export const SECONDARY = '#98989E';
+export const CARD_BACKGROUND = '#151C18';
+export const SECONDARY = '#ABB9AF';
 
 export const PLACEHOLDER_SLOT: WidgetSlot = {
   id: '',

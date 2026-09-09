@@ -1,3 +1,5 @@
+'use no memo';
+
 import { FlexWidget, SvgWidget, TextWidget } from 'react-native-android-widget';
 
 import type { WidgetData, WidgetSlot } from '@/lib/widget-data';
@@ -18,6 +20,7 @@ function RingColumn({ slot }: { slot: WidgetSlot }) {
 }
 
 export function FullRingsWidget({ data }: { data: WidgetData | null }) {
+  'use no memo';
   const slots = normalizeSlots(data);
 
   return (

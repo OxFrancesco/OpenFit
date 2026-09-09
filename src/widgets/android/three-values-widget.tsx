@@ -1,9 +1,12 @@
+'use no memo';
+
 import { FlexWidget, TextWidget } from 'react-native-android-widget';
 
 import type { WidgetData, WidgetSlot } from '@/lib/widget-data';
 import { CARD_BACKGROUND, normalizeSlots, SECONDARY } from './shared';
 
 function ValueColumn({ slot }: { slot: WidgetSlot }) {
+  'use no memo';
   return (
     <FlexWidget style={{ flexDirection: 'column', alignItems: 'center' }}>
       <TextWidget text={slot.label} style={{ fontSize: 12, color: SECONDARY }} />
@@ -17,6 +20,7 @@ function ValueColumn({ slot }: { slot: WidgetSlot }) {
 }
 
 export function ThreeValuesWidget({ data }: { data: WidgetData | null }) {
+  'use no memo';
   const slots = normalizeSlots(data);
 
   return (
