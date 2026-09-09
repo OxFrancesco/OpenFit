@@ -1,6 +1,6 @@
 import type { Device } from 'react-native-ble-plx';
 
-import type { DecodedValue, ScannedDevice } from '@/lib/fitbit-ble-types';
+import type { DecodedValue, BleDeviceSummary } from '@/lib/fitbit-ble-types';
 
 export const WEIGHT_SCALE_SERVICE = '181d';
 
@@ -33,8 +33,8 @@ const UUID_LABELS: Record<string, string> = {
   '2a9e': 'Weight Scale Feature',
 };
 
-export function mergeScannedDevice(
-  current: Record<string, ScannedDevice>,
+export function mergeBleDeviceSummary(
+  current: Record<string, BleDeviceSummary>,
   device: Device
 ) {
   const existing = current[device.id];
@@ -43,15 +43,11 @@ export function mergeScannedDevice(
     ...(device.serviceUUIDs ?? []),
   ]);
   const name = device.name ?? device.localName ?? existing?.name ?? 'Unnamed BLE device';
-  const next: ScannedDevice = {
+  const next: BleDeviceSummary = {
     id: device.id,
     name,
-    rssi: device.rssi ?? existing?.rssi ?? null,
     serviceUUIDs,
-    manufacturerData: device.manufacturerData ?? existing?.manufacturerData ?? null,
-    rawScanRecord: device.rawScanRecord ?? existing?.rawScanRecord ?? null,
     isLikelyFitbit: isLikelyFitbitDevice(name, serviceUUIDs),
-    lastSeenAt: Date.now(),
   };
 
   return { ...current, [device.id]: next };

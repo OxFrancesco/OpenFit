@@ -4,15 +4,11 @@ export type LoadState = 'idle' | 'loading' | 'loaded' | 'error';
 export type PermissionState = 'idle' | 'granted' | 'denied';
 export type BleState = State | 'Unavailable';
 
-export type ScannedDevice = {
+export type BleDeviceSummary = {
   id: string;
   name: string;
-  rssi: number | null;
   serviceUUIDs: string[];
-  manufacturerData: string | null;
-  rawScanRecord: string | null;
   isLikelyFitbit: boolean;
-  lastSeenAt: number;
 };
 
 export type CharacteristicSummary = {

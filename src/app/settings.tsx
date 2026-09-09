@@ -479,7 +479,7 @@ export default function SettingsScreen() {
               <View style={styles.bluetoothCopy}>
                 <ThemedText type="smallBold">Fitbit Bluetooth</ThemedText>
                 <ThemedText type="small" style={{ color: theme.textSecondary }}>
-                  Scan and inspect nearby Aria Air BLE services.
+                  Inspect Aria Air devices connected to this phone.
                 </ThemedText>
               </View>
             </Pressable>

@@ -28,14 +28,13 @@ export function FitbitBleLab() {
     disconnect,
     message,
     permissionState,
-    scanState,
+    listState,
     services,
     sortedDevices,
-    startScan,
-    stopScan,
+    loadConnectedDevices,
   } = useFitbitBle();
   const statusColor =
-    scanState === 'error' || connectionState === 'error' || permissionState === 'denied'
+    listState === 'error' || connectionState === 'error' || permissionState === 'denied'
       ? ErrorRed
       : theme.textSecondary;
 
@@ -69,10 +68,10 @@ export function FitbitBleLab() {
         <Section index={2}>
           <View style={styles.actionRow}>
             <ActionButton
-              label={scanState === 'loading' ? 'Stop scan' : 'Scan'}
-              disabled={connectionState === 'loading'}
+              label={listState === 'loading' ? 'Loading...' : 'Refresh devices'}
+              disabled={connectionState === 'loading' || listState === 'loading'}
               primary
-              onPress={scanState === 'loading' ? () => stopScan('loaded') : startScan}
+              onPress={loadConnectedDevices}
             />
             <ActionButton
               label="Disconnect"
@@ -83,7 +82,7 @@ export function FitbitBleLab() {
         </Section>
 
         <Section index={3}>
-          <SectionHeader title="Devices" trailing={scanState === 'loading' ? 'Scanning' : null} />
+          <SectionHeader title="Connected devices" trailing={null} />
           <View style={[styles.card, { backgroundColor: theme.card }]}>
             {sortedDevices.length > 0 ? (
               sortedDevices.map((device) => (
@@ -124,14 +123,11 @@ export function FitbitBleLab() {
                       </ThemedText>
                     ) : null}
                   </View>
-                  <ThemedText type="small" style={{ color: theme.textSecondary }}>
-                    {device.rssi == null ? 'RSSI -' : `${device.rssi} dBm`}
-                  </ThemedText>
                 </Pressable>
               ))
             ) : (
               <ThemedText type="small" style={{ color: theme.textSecondary }}>
-                {scanState === 'loading' ? 'Looking for nearby BLE devices.' : 'No devices scanned yet.'}
+                {listState === 'loading' ? 'Loading connected BLE devices.' : 'Refresh to load devices connected to this phone.'}
               </ThemedText>
             )}
           </View>
