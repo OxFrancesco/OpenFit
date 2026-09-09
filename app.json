@@ -52,6 +52,7 @@
         }
       ],
       "expo-secure-store",
+      "./plugins/with-widget-target-version",
       [
         "expo-widgets",
         {
@@ -452,7 +453,6 @@
           ]
         }
       ],
-      "./plugins/with-widget-target-version",
       "expo-background-task",
       [
         "react-native-android-widget",
