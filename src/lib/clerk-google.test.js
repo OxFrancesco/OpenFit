@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import { GOOGLE_HEALTH_SCOPES, selectGoogleAccount, selectGoogleToken } from '../../shared/clerk-google';
 
-const account = { id: 'eac_a', provider: 'oauth_google', provider_user_id: 'google-a' };
+const account = { id: 'idn_a', external_account_id: 'eac_a', provider: 'oauth_google', provider_user_id: 'google-a' };
 describe('Clerk Google account binding', () => {
   test('preserves the Google subject used by existing coach conversations', () => {
     expect(selectGoogleAccount({ external_accounts: [account] })).toEqual({ id: 'eac_a', subject: 'google-a' });

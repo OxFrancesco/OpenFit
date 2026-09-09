@@ -32,7 +32,7 @@ export function selectGoogleAccount(user: unknown, expectedSubject?: string) {
   if (typeof account.id !== 'string' || typeof account.provider_user_id !== 'string') {
     throw new GoogleConnectionError(502, 'Could not verify your Google connection.');
   }
-  return { id: account.id, subject: account.provider_user_id };
+  return { id: typeof account.external_account_id === 'string' ? account.external_account_id : account.id, subject: account.provider_user_id };
 }
 
 async function clerkJson(secret: string | undefined, path: string): Promise<unknown> {
@@ -60,7 +60,7 @@ export function selectGoogleToken(value: unknown, accountId: string) {
   if (!GOOGLE_HEALTH_SCOPES.every(scope => scopes.includes(scope))) {
     throw new GoogleConnectionError(409, 'Google Health permissions are missing. Reconnect Google and allow all Health permissions.');
   }
-  return { accessToken: token.token, scope: scopes.join(' ') };
+  return { accessToken: token.token, scope: scopes.join(' '), expiresAt: typeof token.expires_at === 'number' ? token.expires_at : undefined };
 }
 
 export async function googleTokenForClerkUser(secret: string | undefined, userId: string, expectedSubject?: string) {
@@ -78,8 +78,7 @@ export async function googleTokenForClerkUser(secret: string | undefined, userId
     clerkUserId: userId,
     googleSubject: account.subject,
     issuedAt: Math.floor(Date.now() / 1000),
-    // Always ask Clerk for a current provider token on the next refresh.
-    expiresIn: 0,
+    expiresIn: token.expiresAt ? Math.max(0, Math.floor(token.expiresAt / 1000) - Math.floor(Date.now() / 1000)) : 0,
     tokenType: 'Bearer',
     profile: {
       name: typeof profile.name === 'string' ? profile.name : undefined,
