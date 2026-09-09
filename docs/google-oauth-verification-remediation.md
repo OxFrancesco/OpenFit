@@ -99,7 +99,7 @@ Record one continuous, unedited-enough-to-follow walkthrough in English. Keep th
 7. Show the profile-based greeting, proving the `openid` and `https://www.googleapis.com/auth/userinfo.profile` experience.
 8. Show populated activity rings and the selected seven-day range.
 9. Show the populated Sleep, total-calorie, and heart-rate cards to evidence the remaining three Health scope categories.
-10. End in the production fitness experience.
+10. End on the production dashboard after showing the corresponding activity, sleep, nutrition, and health-metric cards.
 
 The narration should name the scope category when its feature appears. Do not show source code as a substitute for user-facing evidence.
 
@@ -136,8 +136,8 @@ Maximum user-facing use of each requested scope:
 
 The Apple Health export is a separate user-started iOS action. It reads already-authorized Google data and writes selected weight, sleep, or workout records to Apple Health. It never writes to Google Health.
 
-Updated demonstration video: [DEMO_VIDEO_URL]
-Consent-screen permission details begin at: 00:23
+Updated demonstration video: https://youtu.be/tGiubfB75UU
+Consent-screen permission details begin at: 00:43
 Production URL: https://avg-francesco-fitty.expo.app
 
 The new video starts with a fresh OAuth grant and shows Google's complete English granular-consent screen. In the current Google UI the four Health permissions are listed directly rather than behind a “See the # services” link. The video pauses on the complete unselected list, shows all four selected, then demonstrates the corresponding populated activity, sleep, nutrition, and health-metric dashboard features.
@@ -172,8 +172,8 @@ oddofrancesco000@gmail.com
 
 - [x] The deployed runtime and Google Cloud Data Access list match the six-scope contract exactly.
 - [x] A fresh grant shows only the expected consent permissions.
-- [ ] The video URL is accessible without requesting access.
+- [x] The video URL is accessible without requesting access.
 - [x] The submitted production URL is reachable by the reviewer.
 - [x] The email explains that no separate OpenFit test credentials are required.
-- [ ] The demonstration video placeholder in the reply was replaced.
+- [x] The demonstration video placeholder in the reply was replaced.
 - [x] No reusable credential or secret appears in the email, video, or repository.

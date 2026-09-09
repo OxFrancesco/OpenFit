@@ -99,6 +99,14 @@ export function useGoogleOAuthFlow<Range extends number>({
         throw new Error('Google OAuth state was missing. Try signing in again.');
       }
 
+      // Expo Router can retain the original callback params after the browser URL
+      // has been cleaned. Range or preference updates then re-render this hook.
+      // Ignore an already-completed callback before looking for pending state,
+      // which was intentionally cleared after the first successful exchange.
+      if (processedStatesRef.current.has(returnedState)) {
+        return;
+      }
+
       const pendingState =
         expectedState ??
         pendingStateRef.current ??
@@ -117,10 +125,6 @@ export function useGoogleOAuthFlow<Range extends number>({
         pendingStateRef.current = null;
         await clearPendingGoogleOAuth().catch(() => undefined);
         throw new Error(oauthError);
-      }
-
-      if (processedStatesRef.current.has(returnedState)) {
-        return;
       }
 
       processedStatesRef.current.add(returnedState);
