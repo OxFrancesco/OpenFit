@@ -45,9 +45,7 @@ export default function RootLayout() {
           options={{
             headerShown: true,
             title: 'Log exercise',
-            presentation: process.env.EXPO_OS === 'ios' ? 'formSheet' : 'modal',
-            sheetAllowedDetents: [0.75, 1],
-            sheetGrabberVisible: true,
+            presentation: 'modal',
             headerStyle: { backgroundColor: colors.background },
             headerTintColor: colors.text,
             headerShadowVisible: false,
