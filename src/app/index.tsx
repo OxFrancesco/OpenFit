@@ -1,3 +1,5 @@
+import { Button, List, SegmentedButtons } from 'react-native-paper';
+import { MaterialIcon } from '@/components/material-icon';
 import { Link, useFocusEffect, type Href } from 'expo-router';
 import { Image } from 'expo-image';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
@@ -9,10 +11,9 @@ import { ActivityRings, type RingSlot } from '@/components/activity-rings';
 import { CardEditor } from '@/components/card-editor';
 import { LoadingDots, SkeletonCard } from '@/components/loading';
 import { MetricCard } from '@/components/metric-card';
-import { MetricIcon } from '@/components/metric-icon';
 import { SleepCard } from '@/components/sleep-card';
 import { ThemedText } from '@/components/themed-text';
-import { ErrorRed, MaxContentWidth, Spacing } from '@/constants/theme';
+import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { fetchGoogleConfig, useGoogleOAuthFlow } from '@/hooks/use-google-oauth-flow';
 import { useTheme } from '@/hooks/use-theme';
 import { getApiBaseUrl } from '@/lib/api-base';
@@ -567,73 +568,37 @@ export default function HomeScreen() {
     }
 
     return (
-      <View style={[styles.signInScreen, { backgroundColor: theme.background }]}>
+      <ScrollView style={{ flex: 1, backgroundColor: theme.background }} contentContainerStyle={styles.signInScroll}>
         <View style={styles.signInContent}>
-          <ThemedText type="hero">OpenFit</ThemedText>
-          <ThemedText type="small" style={{ color: theme.textSecondary }}>
-            Connects to Google Health
-          </ThemedText>
-          <View style={styles.signInDisclosureBlock}>
-            <ThemedText type="small" style={[styles.signInDisclosure, { color: theme.textSecondary }]}>
-              OpenFit reads the Google Health data you authorize to show your personal dashboard,
-              widgets, and optional Apple Health export. If you use the Personal Health-Data Coach,
-              OpenFit processes relevant health data and your questions using Cloudflare AI services.
+          <ThemedText type="title">Health overview</ThemedText>
+          <View style={[styles.connectionCard, { backgroundColor: theme.primaryContainer }]}>
+            <MaterialIcon name="monitor-heart" size={40} color={theme.onPrimaryContainer} />
+            <ThemedText type="subtitle" style={{ color: theme.onPrimaryContainer }}>Connect Google Health</ThemedText>
+            <ThemedText style={{ color: theme.onPrimaryContainer }}>
+              See your activity, sleep and other health data in one place.
             </ThemedText>
-            <ThemedText type="small" style={[styles.signInDisclosure, { color: theme.textSecondary }]}>
-              The coach stores an encrypted Google refresh token for its connection. Encrypted coach
-              messages are retained for up to 90 days. Voice recordings are sent to ElevenLabs for
-              transcription. OpenFit does not sell Google Health data or share it with advertisers.
-            </ThemedText>
-            <View style={styles.legalLinks}>
-              {LEGAL_LINKS.map((link) => (
-                <Link key={link.label} href={link.href} asChild>
-                  <Pressable hitSlop={8}>
-                    <ThemedText type="smallBold" style={{ color: theme.text }}>
-                      {link.label}
-                    </ThemedText>
-                  </Pressable>
-                </Link>
-              ))}
-            </View>
+            {authState === 'loading' ? <LoadingDots color={theme.primary} /> : <GoogleSignInButton disabled={!canLogin} onPress={startGoogleSignIn} />}
           </View>
-
           {error && <ErrorBanner message={error} />}
-
-          {authState === 'loading' ? (
-            <View style={styles.signInLoading}>
-              <LoadingDots color={theme.textSecondary} size={8} />
+          <List.Accordion title="How your data is used" left={props => <List.Icon {...props} icon="shield-lock-outline" />} style={{ backgroundColor: theme.surfaceContainer, borderRadius: 24 }}>
+            <View style={styles.signInDisclosureBlock}>
+              <ThemedText type="small" themeColor="textSecondary">
+                OpenFit reads the Google Health data you authorize for your dashboard, widgets and optional Apple Health export. The optional coach processes relevant health data and your questions using Cloudflare AI services.
+              </ThemedText>
+              <ThemedText type="small" themeColor="textSecondary">
+                The coach stores an encrypted Google refresh token. Encrypted messages are retained for up to 90 days. Voice recordings go to ElevenLabs for transcription. OpenFit does not sell your Google Health data or share it with advertisers.
+              </ThemedText>
             </View>
-          ) : (
-            <GoogleSignInButton disabled={!canLogin} onPress={startGoogleSignIn} />
-          )}
-
-          <Link href="/fitness" asChild>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Open the offline workout log"
-              accessibilityHint="Does not require a Google connection"
-              style={({ pressed }) => [styles.workoutLogLink, pressed && styles.pressed]}
-            >
-              <MetricIcon icon="dumbbell.fill" glyph="◆" size={18} color={theme.text} />
-              <ThemedText type="smallBold">Use the workout log offline</ThemedText>
-            </Pressable>
-          </Link>
-
-          {DEBUG_ENABLED && (
-            <DebugPanel
-              expanded={showDebug}
-              onToggle={() => setShowDebug((v) => !v)}
-              items={[
-                { label: 'API server', value: getApiBaseUrl() },
-                { label: 'Redirect URI', value: config?.redirectUri ?? 'Loading' },
-                { label: 'Callback URI', value: config?.appReturnUri ?? GOOGLE_NATIVE_REDIRECT_URI },
-                { label: 'OAuth client', value: config?.clientId ? 'Configured' : configError ?? 'Loading' },
-                { label: 'Client secret', value: config?.hasClientSecret ? 'Server only' : 'Missing' },
-              ]}
-            />
-          )}
+          </List.Accordion>
+          <View style={styles.legalLinks}>
+            {LEGAL_LINKS.map(link => <Link key={link.label} href={link.href} asChild><Button mode="text">{link.label}</Button></Link>)}
+          </View>
+          {DEBUG_ENABLED && <DebugPanel expanded={showDebug} onToggle={() => setShowDebug(v => !v)} items={[
+            { label: 'API server', value: getApiBaseUrl() },
+            { label: 'OAuth client', value: config?.clientId ? 'Configured' : configError ?? 'Loading' },
+          ]} />}
         </View>
-      </View>
+      </ScrollView>
     );
   }
 
@@ -644,8 +609,8 @@ export default function HomeScreen() {
         styles.dashboardScreen,
         {
           backgroundColor: theme.background,
-          paddingTop: Platform.OS === 'android' ? insets.top : 0,
-          paddingBottom: Platform.OS === 'android' ? Math.max(insets.bottom, Spacing.four) : 0,
+          paddingTop: 0,
+          paddingBottom: 0,
         },
       ]}
     >
@@ -669,41 +634,7 @@ export default function HomeScreen() {
                 <ThemedText type="smallBold" style={[styles.dateLabel, { color: theme.textSecondary }]}>
                   {todayStr}
                 </ThemedText>
-                <View style={styles.headerButtons}>
-                  <Link href="/fitness" asChild>
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel="Fitness and workout log"
-                      accessibilityHint="Search exercises and log gym sets"
-                      hitSlop={12}
-                      style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
-                    >
-                      <MetricIcon icon="dumbbell.fill" glyph="◆" size={28} color={theme.text} />
-                    </Pressable>
-                  </Link>
-                  <Link href="/coach" asChild>
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel="Health coach"
-                      accessibilityHint="Opens your personal health-data coach"
-                      hitSlop={12}
-                      style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
-                    >
-                      <MetricIcon icon="heart.text.square.fill" glyph="♥" size={28} color={theme.text} />
-                    </Pressable>
-                  </Link>
-                  <Link href="/settings" asChild>
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel="Settings"
-                      accessibilityHint="Opens app settings"
-                      hitSlop={12}
-                      style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
-                    >
-                      <MetricIcon icon="gearshape" glyph="⚙" size={28} color={theme.textSecondary} />
-                    </Pressable>
-                  </Link>
-                </View>
+
               </View>
               <ThemedText type="title">{greeting}</ThemedText>
             </View>
@@ -713,30 +644,11 @@ export default function HomeScreen() {
 
           {/* ── Range segmented control ── */}
           <Section index={1}>
-            <View style={[styles.segments, { backgroundColor: theme.backgroundSelected }]}>
-              {RANGE_OPTIONS.map((option) => {
-                const active = rangeDays === option.value;
-                return (
-                  <Pressable
-                    key={option.value}
-                    disabled={initialLoading}
-                    onPress={() => updateRangeDays(option.value)}
-                    style={({ pressed }) => [
-                      styles.segment,
-                      active && { backgroundColor: theme.text },
-                      pressed && styles.pressed,
-                    ]}
-                  >
-                    <ThemedText
-                      type="smallBold"
-                    style={{ color: active ? theme.background : theme.textSecondary }}
-                  >
-                    {option.label}
-                  </ThemedText>
-                </Pressable>
-              );
-            })}
-          </View>
+            <SegmentedButtons
+              value={String(rangeDays)}
+              onValueChange={value => { const option = RANGE_OPTIONS.find(item => String(item.value) === value); if (option) updateRangeDays(option.value); }}
+              buttons={RANGE_OPTIONS.map(option => ({ value: String(option.value), label: option.label, disabled: initialLoading }))}
+            />
         </Section>
 
         {/* ── Activity rings ── */}
@@ -777,7 +689,7 @@ export default function HomeScreen() {
               type="small"
               style={{ color: theme.textSecondary, textAlign: 'center' }}
             >
-              No cards yet — tap Edit to add some.
+              Choose the health metrics you want to see.
             </ThemedText>
           ) : (
             <View style={styles.metricGrid}>
@@ -953,12 +865,13 @@ function DebugPanel({
 }
 
 function ErrorBanner({ message }: { message: string }) {
+  const theme = useTheme();
   return (
     <View style={styles.errorBanner}>
-      <ThemedText type="smallBold" style={{ color: ErrorRed }}>
+      <ThemedText type="smallBold" style={{ color: theme.error }}>
         Error
       </ThemedText>
-      <ThemedText type="small" style={{ color: ErrorRed }}>
+      <ThemedText type="small" style={{ color: theme.error }}>
         {message}
       </ThemedText>
     </View>
@@ -1031,9 +944,9 @@ function decodeIdToken(idToken: string): { name?: string; given_name?: string; e
 
 // ─── Styles ────────────────────────────────────────────────────────────────────
 // Apple Health–style: grouped gray background, borderless rounded cards,
-// monochrome controls. Color lives in the rings only.
+// monochrome controls. Semantic color roles match the shared Material theme.
 
-const RADIUS = 12;
+const RADIUS = 28;
 
 const styles = StyleSheet.create({
   dashboardScreen: {
@@ -1060,8 +973,8 @@ const styles = StyleSheet.create({
     gap: Spacing.three,
   },
   dateLabel: {
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+
+    letterSpacing: 0,
   },
   headerButtons: {
     flexDirection: 'row',
@@ -1163,18 +1076,18 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.six,
     paddingBottom: Spacing.six * 3,
   },
+  signInScroll: { flexGrow: 1, padding: 24, alignItems: 'center' },
+  connectionCard: { borderRadius: 32, padding: 28, gap: 20 },
   signInContent: {
     width: '100%',
     maxWidth: MaxContentWidth,
-    alignItems: 'center',
-    paddingHorizontal: Spacing.four,
     gap: Spacing.four,
+    paddingBottom: 24,
   },
   signInDisclosureBlock: {
     width: '100%',
-    maxWidth: 440,
-    gap: Spacing.two,
-    alignItems: 'center',
+    padding: 20,
+    gap: 16,
   },
   signInDisclosure: {
     textAlign: 'center',

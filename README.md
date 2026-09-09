@@ -383,3 +383,33 @@ Open the app, sign in with Google, then sync from the dashboard or settings. Wid
 - Strava API Policy effective June 1, 2026: https://www.strava.com/legal/api_policy
 - Garmin Connect Developer Program FAQ: https://developer.garmin.com/gc-developer-program/program-faq/
 - Google Health to Apple Health implementation notes: `docs/google-health-to-apple-health-sync.md`
+
+## Material UI and OpenFit accounts
+
+The app uses React Native Paper Material 3 controls, Roboto typography, tonal light and dark
+colors, a bottom navigation bar on compact screens, and a navigation rail at widths of 840 or
+more. Android wallpaper-derived dynamic color is not currently enabled.
+
+OpenFit accounts use Clerk email codes. Google Health authorization remains a separate
+connection. Local workouts are device-wide and do not sync with Clerk accounts.
+
+Before starting a checkout, link the development Clerk application and pull its environment:
+
+```sh
+bunx clerk link --app app_3J69VZfQwE2gRw1HBLZtoKMDKma
+bunx clerk env pull --instance dev --file .env.local
+bun install
+bun start
+```
+
+The client needs `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY`. Keep `CLERK_SECRET_KEY` in ignored
+local environment files and server environments only. The development instance uses email
+codes and has the Native API enabled. Configure the same authentication methods and native
+application identifiers before using a production instance.
+
+The development dummy account is `openfit+clerk_test@example.com`. Clerk's development
+verification code is `424242`. Open Settings, select the OpenFit account, and sign in with
+that address. These credentials are for the development instance only.
+
+Run project tests with `bun test ./src/ ./workers/`. The explicit directory paths avoid
+including tests from codeview reference repositories.

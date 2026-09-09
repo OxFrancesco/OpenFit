@@ -1,3 +1,5 @@
+import { useUser } from '@clerk/expo';
+import { Button, List } from 'react-native-paper';
 import { Stack, useRouter, type Href } from 'expo-router';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
@@ -7,7 +9,7 @@ import { LoadingDots } from '@/components/loading';
 import { MetricIcon } from '@/components/metric-icon';
 import { ThemedText } from '@/components/themed-text';
 import { WidgetEditor } from '@/components/widget-editor';
-import { ErrorRed, MaxContentWidth, Spacing } from '@/constants/theme';
+import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { syncGoogleHealthToAppleHealth } from '@/lib/apple-health-sync';
 import { unregisterWidgetRefresh } from '@/lib/background-refresh';
@@ -43,6 +45,7 @@ const RANGE_OPTIONS: { label: string; value: DashboardRangeDays }[] = [
 
 export default function SettingsScreen() {
   const theme = useTheme();
+  const { user } = useUser();
   const router = useRouter();
   const [prefs, setPrefs] = useState<DashboardPrefs>(defaultPrefs);
   const [token, setToken] = useState<GoogleTokenResponse | null>(null);
@@ -273,7 +276,7 @@ export default function SettingsScreen() {
       <Stack.Screen
         options={{
           headerShown: true,
-          title: '',
+          title: 'Settings',
           headerBackTitle: 'Home',
           headerStyle: { backgroundColor: theme.background },
           headerTintColor: theme.text,
@@ -287,13 +290,12 @@ export default function SettingsScreen() {
         contentInsetAdjustmentBehavior="automatic"
       >
       <View style={styles.container}>
-        <Section index={0}>
-          <ThemedText type="title">Settings</ThemedText>
-        </Section>
+        <List.Item accessibilityRole="button" title={user ? user.fullName || 'Your account' : 'Sign in to OpenFit'} description={user?.primaryEmailAddress?.emailAddress} left={props => <List.Icon {...props} icon="account-circle-outline" />} right={props => <List.Icon {...props} icon="chevron-right" />} onPress={() => router.push('/account')} style={{ backgroundColor: theme.primaryContainer, borderRadius: 28 }} />
+
 
         <Section index={1}>
           <SectionHeader
-            title="Account"
+            title="Google Health"
             trailing={
               accountSyncState === 'loading' || restoringSession ? (
                 <LoadingDots color={theme.textSecondary} />
@@ -312,16 +314,15 @@ export default function SettingsScreen() {
               <ThemedText type="smallBold">Google account</ThemedText>
               <ThemedText
                 type="small"
-                style={{ color: accountSyncState === 'error' ? ErrorRed : theme.textSecondary }}
+                style={{ color: accountSyncState === 'error' ? theme.error : theme.textSecondary }}
               >
                 {accountMessage ?? (token ? 'Connected' : 'Not signed in')}
               </ThemedText>
             </View>
             <TextButton
-              label="Sign out"
+              label={token ? "Disconnect" : "Connect"}
               color={theme.textSecondary}
-              onPress={signOut}
-              disabled={!token}
+              onPress={token ? signOut : () => router.replace("/")}
             />
           </View>
         </Section>
@@ -386,7 +387,7 @@ export default function SettingsScreen() {
           {widgetSyncMessage ? (
             <ThemedText
               type="small"
-              style={{ color: widgetSyncState === 'error' ? ErrorRed : theme.textSecondary }}
+              style={{ color: widgetSyncState === 'error' ? theme.error : theme.textSecondary }}
             >
               {widgetSyncMessage}
             </ThemedText>
@@ -421,13 +422,13 @@ export default function SettingsScreen() {
                       onPress={() => setRangeDays(option.value)}
                       style={({ pressed }) => [
                         styles.segment,
-                        active && { backgroundColor: theme.text },
+                        active && { backgroundColor: theme.primary },
                         pressed && styles.pressed,
                       ]}
                     >
                       <ThemedText
                         type="smallBold"
-                        style={{ color: active ? theme.background : theme.textSecondary }}
+                        style={{ color: active ? theme.onPrimary : theme.textSecondary }}
                       >
                         {option.label}
                       </ThemedText>
@@ -441,7 +442,7 @@ export default function SettingsScreen() {
                 <ThemedText
                   type="small"
                   style={{
-                    color: appleHealthSyncState === 'error' ? ErrorRed : theme.textSecondary,
+                    color: appleHealthSyncState === 'error' ? theme.error : theme.textSecondary,
                   }}
                 >
                   {appleHealthSyncMessage ??
@@ -485,6 +486,10 @@ export default function SettingsScreen() {
             </Pressable>
           </Section>
         )}
+
+        <View style={{ borderRadius: 28, overflow: 'hidden', backgroundColor: theme.surfaceContainer }}>
+          {([{ title: 'Privacy', href: '/privacy', icon: 'shield-lock-outline' }, { title: 'Terms', href: '/terms', icon: 'file-document-outline' }, { title: 'Support', href: '/support', icon: 'help-circle-outline' }] as const).map(item => <List.Item accessibilityRole="button" key={item.href} title={item.title} left={props => <List.Icon {...props} icon={item.icon} />} right={props => <List.Icon {...props} icon="chevron-right" />} onPress={() => router.push(item.href)} />)}
+        </View>
 
         <WidgetEditor
           visible={widgetEditorOpen}
@@ -531,18 +536,7 @@ function TextButton({
   disabled?: boolean;
   color: string;
 }) {
-  return (
-    <Pressable
-      disabled={disabled}
-      onPress={onPress}
-      hitSlop={8}
-      style={({ pressed }) => [disabled && styles.disabled, pressed && !disabled && styles.pressed]}
-    >
-      <ThemedText type="smallBold" style={{ color }}>
-        {label}
-      </ThemedText>
-    </Pressable>
-  );
+  return <Button mode="text" textColor={color} disabled={disabled} onPress={onPress}>{label}</Button>;
 }
 
 const RADIUS = 12;
@@ -623,7 +617,7 @@ const styles = StyleSheet.create({
   },
   segments: {
     flexDirection: 'row',
-    borderRadius: 9,
+    borderRadius: 24,
     borderCurve: 'continuous',
     padding: 2,
   },
@@ -631,7 +625,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     paddingVertical: Spacing.one + Spacing.half,
-    borderRadius: 7,
+    borderRadius: 20,
     borderCurve: 'continuous',
   },
   disabled: {

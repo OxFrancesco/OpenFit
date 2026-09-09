@@ -4,7 +4,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { State } from 'react-native-ble-plx';
 
 import { ThemedText } from '@/components/themed-text';
-import { ErrorRed, MaxContentWidth, Spacing } from '@/constants/theme';
+import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useFitbitBle } from '@/hooks/use-fitbit-ble';
 import { useTheme } from '@/hooks/use-theme';
 import { labelForUuid } from '@/lib/fitbit-ble-codec';
@@ -35,7 +35,7 @@ export function FitbitBleLab() {
   } = useFitbitBle();
   const statusColor =
     listState === 'error' || connectionState === 'error' || permissionState === 'denied'
-      ? ErrorRed
+      ? theme.error
       : theme.textSecondary;
 
   return (
@@ -46,7 +46,7 @@ export function FitbitBleLab() {
     >
       <View style={styles.container}>
         <Section index={0}>
-          <ThemedText type="title">Fitbit BLE Lab</ThemedText>
+
           <ThemedText type="small" style={{ color: theme.textSecondary }}>
             Direct BLE access depends on what the scale exposes over GATT.
           </ThemedText>
@@ -168,7 +168,7 @@ export function FitbitBleLab() {
                             </ThemedText>
                           ) : null}
                           {characteristic.readError || characteristic.monitorError ? (
-                            <ThemedText type="caption" style={{ color: ErrorRed }}>
+                            <ThemedText type="caption" style={{ color: theme.error }}>
                               {characteristic.readError ?? characteristic.monitorError}
                             </ThemedText>
                           ) : null}
@@ -345,7 +345,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 44,
+    minHeight: 48,
     borderWidth: StyleSheet.hairlineWidth,
     borderRadius: 10,
     borderCurve: 'continuous',

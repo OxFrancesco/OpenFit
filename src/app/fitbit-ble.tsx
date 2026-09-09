@@ -15,7 +15,7 @@ export default function FitbitBleScreen() {
       <Stack.Screen
         options={{
           headerShown: true,
-          title: '',
+          title: 'Bluetooth devices',
           headerBackTitle: 'Settings',
           headerStyle: { backgroundColor: theme.background },
           headerTintColor: theme.text,

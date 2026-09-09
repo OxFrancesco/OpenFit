@@ -9,7 +9,7 @@ import {
 
 export default function PrivacyPolicyScreen() {
   return (
-    <LegalPage title="OpenFit Privacy Policy" updated="July 14, 2026">
+    <LegalPage title="OpenFit Privacy Policy" updated="September 9, 2026">
       <LegalSection title="Who We Are">
         <LegalParagraph>
           OpenFit is provided by {OPENFIT_PROVIDER}. For privacy or support questions, contact{' '}
@@ -40,6 +40,16 @@ export default function PrivacyPolicyScreen() {
         <LegalParagraph>
           OpenFit is a personal wellness utility. It does not provide medical advice, diagnosis, or
           treatment.
+        </LegalParagraph>
+      </LegalSection>
+
+      <LegalSection title="OpenFit account">
+        <LegalParagraph>
+          Optional OpenFit accounts use Clerk for email verification and session management.
+          Clerk processes your email address, account profile, and authentication session data.
+          Native session credentials are stored in secure platform storage. Web sessions use
+          Clerk-managed browser cookies. Signing in does not upload local workouts or health
+          connections to Clerk, and signing out of OpenFit does not remove data stored on this device.
         </LegalParagraph>
       </LegalSection>
 

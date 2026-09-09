@@ -1,20 +1,15 @@
 import { useSyncExternalStore } from 'react';
-import { useColorScheme as useRNColorScheme } from 'react-native';
 
-const emptySubscribe = () => () => {};
+function subscribe(onChange: () => void) {
+  const query = window.matchMedia('(prefers-color-scheme: dark)');
+  query.addEventListener('change', onChange);
+  return () => query.removeEventListener('change', onChange);
+}
 
-/**
- * To support static rendering, this value needs to be re-calculated on the client side for web
- */
+function getSnapshot() {
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
+
 export function useColorScheme() {
-  // false during static render, true once hydrated on the client
-  const hasHydrated = useSyncExternalStore(
-    emptySubscribe,
-    () => true,
-    () => false
-  );
-
-  const colorScheme = useRNColorScheme();
-
-  return hasHydrated ? colorScheme : 'light';
+  return useSyncExternalStore(subscribe, getSnapshot, () => 'light');
 }

@@ -146,7 +146,7 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 140,
     minHeight: MetricCardMinHeight,
-    borderRadius: 12,
+    borderRadius: 24,
     borderCurve: 'continuous',
     padding: Spacing.three,
     justifyContent: 'space-between',

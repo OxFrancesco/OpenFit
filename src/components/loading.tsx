@@ -123,7 +123,7 @@ export function LoadingDots({ color, size = 6 }: { color: string; size?: number 
 
 const styles = StyleSheet.create({
   skeletonCard: {
-    borderRadius: 12,
+    borderRadius: 24,
     borderCurve: 'continuous',
     padding: Spacing.three,
     minWidth: 140,

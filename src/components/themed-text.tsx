@@ -25,7 +25,7 @@ export function ThemedText({ style, type = 'default', themeColor, ...rest }: The
   return (
     <Text
       style={[
-        { color: theme[themeColor ?? 'text'] },
+        { color: theme[themeColor ?? 'text'], fontFamily: ['title', 'subtitle', 'smallBold', 'metric'].includes(type) ? Fonts.medium : Fonts.sans },
         type === 'default' && styles.default,
         type === 'title' && styles.title,
         type === 'small' && styles.small,
@@ -44,33 +44,33 @@ export function ThemedText({ style, type = 'default', themeColor, ...rest }: The
   );
 }
 
-// Apple Health–style scale: system font, bold headings, quiet gray captions.
+// Material 3 type roles shared by native and web screens.
 const styles = StyleSheet.create({
   small: {
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: 14,
+    lineHeight: 20,
     fontWeight: 400,
   },
   smallBold: {
-    fontSize: 13,
-    lineHeight: 18,
-    fontWeight: 600,
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: 500,
   },
   default: {
     fontSize: 16,
-    lineHeight: 21,
+    lineHeight: 24,
     fontWeight: 400,
   },
   title: {
-    fontSize: 30,
-    lineHeight: 36,
-    fontWeight: 700,
+    fontSize: 32,
+    lineHeight: 40,
+    fontWeight: 500,
     letterSpacing: 0,
   },
   subtitle: {
-    fontSize: 20,
-    lineHeight: 25,
-    fontWeight: 600,
+    fontSize: 22,
+    lineHeight: 28,
+    fontWeight: 500,
   },
   link: {
     lineHeight: 30,
@@ -79,24 +79,24 @@ const styles = StyleSheet.create({
   linkPrimary: {
     lineHeight: 30,
     fontSize: 14,
-    color: '#007AFF',
+
   },
   code: {
     fontFamily: Fonts.mono,
     fontSize: 12,
-    lineHeight: 18,
+    lineHeight: 20,
   },
   hero: {
-    fontSize: 40,
-    lineHeight: 46,
-    fontWeight: 700,
+    fontSize: 45,
+    lineHeight: 52,
+    fontWeight: 500,
     fontVariant: ['tabular-nums'],
     letterSpacing: 0,
   },
   metric: {
     fontSize: 24,
     lineHeight: 30,
-    fontWeight: 600,
+    fontWeight: 500,
     fontVariant: ['tabular-nums'],
   },
   caption: {

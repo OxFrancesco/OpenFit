@@ -1,3 +1,4 @@
+import { Chip, Searchbar, SegmentedButtons } from 'react-native-paper';
 import { router, useFocusEffect, useLocalSearchParams, type Href } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
@@ -6,14 +7,13 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  TextInput,
   View,
 } from 'react-native';
 import Animated, { FadeIn, FadeInDown, LinearTransition } from 'react-native-reanimated';
 
 import { MetricIcon } from '@/components/metric-icon';
 import { ThemedText } from '@/components/themed-text';
-import { ErrorRed, Fonts, MaxContentWidth, Spacing } from '@/constants/theme';
+import { Fonts, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useFitnessConnections } from '@/hooks/use-fitness-connections';
 import { useTheme } from '@/hooks/use-theme';
 import { EXERCISE_MUSCLES, getCatalogExercise } from '@/lib/exercise-catalog';
@@ -153,57 +153,25 @@ export function FitnessScreen() {
       contentContainerStyle={styles.scrollContent}
     >
       <View style={styles.container}>
-        <Animated.View entering={FadeInDown.duration(320)} style={styles.intro}>
-          <ThemedText type="small" style={{ color: theme.textSecondary }}>
-            TRAINING LOG
-          </ThemedText>
-          <ThemedText type="subtitle">Find it. Lift it. Remember it.</ThemedText>
-          <ThemedText type="small" style={{ color: theme.textSecondary }}>
-            Search the built-in exercise library and keep your gym history available offline.
-          </ThemedText>
-        </Animated.View>
 
-        <TrainingSummary
+        {section !== 'connections' ? <TrainingSummary
           entries={stats.entries}
           exercises={stats.exercises}
           volumeKg={stats.volumeKg}
-        />
+        /> : null}
 
-        <View
-          accessibilityRole="tablist"
-          style={[styles.segments, { backgroundColor: theme.backgroundSelected }]}
-        >
-          {SECTIONS.map((item) => {
-            const selected = section === item.id;
-            return (
-              <Pressable
-                key={item.id}
-                accessibilityRole="tab"
-                accessibilityState={{ selected }}
-                onPress={() => setSection(item.id)}
-                style={({ pressed }) => [
-                  styles.segment,
-                  selected && { backgroundColor: theme.text },
-                  pressed && styles.pressed,
-                ]}
-              >
-                <ThemedText
-                  type="smallBold"
-                  style={{ color: selected ? theme.background : theme.textSecondary }}
-                >
-                  {item.label}
-                </ThemedText>
-              </Pressable>
-            );
-          })}
-        </View>
+        <SegmentedButtons
+          value={section}
+          onValueChange={value => { const item = SECTIONS.find(option => option.id === value); if (item) setSection(item.id); }}
+          buttons={SECTIONS.map(item => ({ value: item.id, label: item.label }))}
+        />
 
         {errorMessages.length ? (
           <View accessibilityRole="alert" style={styles.errorBanner}>
-            <ThemedText selectable type="smallBold" style={{ color: ErrorRed }}>
+            <ThemedText selectable type="smallBold" style={{ color: theme.error }}>
               Fitness data is unavailable
             </ThemedText>
-            <ThemedText selectable type="small" style={{ color: ErrorRed }}>
+            <ThemedText selectable type="small" style={{ color: theme.error }}>
               {errorMessages.join(' ')}
             </ThemedText>
           </View>
@@ -265,17 +233,15 @@ function TrainingSummary({
   return (
     <Animated.View
       entering={FadeInDown.delay(60).duration(320)}
-      style={[styles.summaryCard, { backgroundColor: theme.card }]}
+      style={[styles.summaryCard, { backgroundColor: theme.primaryContainer }]}
     >
       <View style={styles.summaryHeader}>
-        <View style={[styles.summaryIcon, { backgroundColor: theme.backgroundSelected }]}>
+        <View style={[styles.summaryIcon, { backgroundColor: theme.secondaryContainer }]}>
           <MetricIcon icon="dumbbell.fill" glyph="◆" size={22} color={theme.text} />
         </View>
         <View style={styles.flex}>
-          <ThemedText type="smallBold">Last 7 days</ThemedText>
-          <ThemedText type="small" style={{ color: theme.textSecondary }}>
-            Manual gym entries stay on this device
-          </ThemedText>
+          <ThemedText type="smallBold">This week</ThemedText>
+
         </View>
       </View>
       <View style={styles.summaryStats}>
@@ -320,31 +286,7 @@ function ExerciseLibrary({
 
   return (
     <Animated.View entering={FadeIn.duration(180)} style={styles.section}>
-      <View style={[styles.searchBar, { backgroundColor: theme.card, borderColor: theme.separator }]}>
-        <MetricIcon icon="magnifyingglass" glyph="⌕" size={19} color={theme.textSecondary} />
-        <TextInput
-          accessibilityLabel="Search exercises"
-          value={query}
-          onChangeText={onChangeQuery}
-          placeholder="Search bench, legs, cable…"
-          placeholderTextColor={theme.textSecondary}
-          returnKeyType="search"
-          autoCapitalize="none"
-          autoCorrect={false}
-          style={[styles.searchInput, { color: theme.text }]}
-        />
-        {query ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Clear exercise search"
-            hitSlop={8}
-            onPress={() => onChangeQuery('')}
-            style={({ pressed }) => pressed && styles.pressed}
-          >
-            <MetricIcon icon="xmark.circle.fill" glyph="×" size={20} color={theme.textSecondary} />
-          </Pressable>
-        ) : null}
-      </View>
+      <Searchbar accessibilityLabel="Search exercises" placeholder="Search exercises" value={query} onChangeText={onChangeQuery} style={{ backgroundColor: theme.surfaceContainerHigh }} />
 
       <ScrollView
         horizontal
@@ -363,14 +305,7 @@ function ExerciseLibrary({
         ))}
       </ScrollView>
 
-      <View style={styles.resultHeader}>
-        <ThemedText type="smallBold">
-          {exercises.length} {exercises.length === 1 ? 'exercise' : 'exercises'}
-        </ThemedText>
-        <ThemedText type="caption" style={{ color: theme.textSecondary }}>
-          Tap one to log it
-        </ThemedText>
-      </View>
+
 
       {exercises.length ? (
         <View style={styles.results}>
@@ -404,29 +339,7 @@ function FilterChip({
   selected: boolean;
   onPress: () => void;
 }) {
-  const theme = useTheme();
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityState={{ selected }}
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.chip,
-        {
-          backgroundColor: selected ? theme.text : theme.card,
-          borderColor: selected ? theme.text : theme.separator,
-        },
-        pressed && styles.pressed,
-      ]}
-    >
-      <ThemedText
-        type="smallBold"
-        style={{ color: selected ? theme.background : theme.textSecondary }}
-      >
-        {label}
-      </ThemedText>
-    </Pressable>
-  );
+  return <Chip selected={selected} showSelectedCheck onPress={onPress} accessibilityLabel={label} style={{ borderRadius: 12 }} >{label}</Chip>;
 }
 
 function ExerciseRow({
@@ -452,11 +365,12 @@ function ExerciseRow({
         onPress={() => router.push(href)}
         style={({ pressed }) => [
           styles.exerciseRow,
+          { borderRadius: index === 0 ? 24 : 8 },
           { backgroundColor: theme.card, borderColor: theme.separator },
           pressed && styles.pressed,
         ]}
       >
-        <View style={[styles.exerciseIcon, { backgroundColor: theme.backgroundSelected }]}>
+        <View style={[styles.exerciseIcon, { backgroundColor: theme.secondaryContainer }]}>
           <MetricIcon
             icon={exercise.category === 'cardio' ? 'figure.run' : 'dumbbell.fill'}
             glyph={exercise.category === 'cardio' ? '●' : '◆'}
@@ -509,7 +423,7 @@ function WorkoutHistory({
       <EmptyState
         icon="list.bullet.clipboard"
         glyph="≡"
-        title="No gym entries yet"
+        title="No workouts yet"
         detail="Choose an exercise and record your first sets, reps, and weight."
         actionLabel="Browse exercises"
         onAction={onBrowse}
@@ -519,12 +433,7 @@ function WorkoutHistory({
 
   return (
     <Animated.View entering={FadeIn.duration(180)} style={styles.section}>
-      <View style={styles.resultHeader}>
-        <ThemedText type="smallBold">Recent entries</ThemedText>
-        <ThemedText type="caption" themeColor="textSecondary">
-          Newest first
-        </ThemedText>
-      </View>
+
       <View style={styles.results}>
         {logs.map((log) => (
           <HistoryRow key={log.id} log={log} onDeleted={onDeleted} />
@@ -612,7 +521,7 @@ function HistoryRow({ log, onDeleted }: { log: WorkoutLog; onDeleted: () => Prom
               onPress={remove}
               style={({ pressed }) => [styles.deleteButton, pressed && styles.pressed]}
             >
-              <MetricIcon icon="trash" glyph="×" size={17} color={ErrorRed} />
+              <MetricIcon icon="trash" glyph="×" size={17} color={theme.error} />
             </Pressable>
           </View>
         </View>
@@ -668,28 +577,8 @@ function Connections({
   failedDisconnectProvider: ConnectableFitnessProviderId | null;
   onRemoveLocal: (provider: ConnectableFitnessProviderId) => Promise<void>;
 }) {
-  const theme = useTheme();
   return (
     <Animated.View entering={FadeIn.duration(180)} style={styles.section}>
-      <View style={[styles.notice, { backgroundColor: theme.card, borderColor: theme.separator }]}>
-        <MetricIcon icon="shield.lefthalf.filled" glyph="◇" size={20} color={theme.text} />
-        <View style={styles.flex}>
-          <ThemedText type="smallBold">Connections stay explicit</ThemedText>
-          <ThemedText selectable type="small" style={{ color: theme.textSecondary }}>
-            Provider credentials stay encrypted on the server. Strava remains disabled until
-            written policy clearance; Garmin requires partner approval. Neither service is sent to
-            the AI coach.
-          </ThemedText>
-        </View>
-      </View>
-
-      <View style={styles.resultHeader}>
-        <ThemedText type="smallBold">Fitness services</ThemedText>
-        <ThemedText type="caption" style={{ color: theme.textSecondary }}>
-          3 services
-        </ThemedText>
-      </View>
-
       <View style={styles.results}>
         {FITNESS_PROVIDERS.map((provider) => (
           <ProviderCard
@@ -802,7 +691,7 @@ function ProviderCard({
   return (
     <View style={[styles.providerCard, { backgroundColor: theme.card, borderColor: theme.separator }]}>
       <View style={styles.providerHeader}>
-        <View style={[styles.providerMark, { backgroundColor: theme.backgroundSelected }]}>
+        <View style={[styles.providerMark, { backgroundColor: theme.secondaryContainer }]}>
           <ProviderGlyph providerId={provider.id} />
         </View>
         <View style={styles.flex}>
@@ -820,7 +709,7 @@ function ProviderCard({
       <View style={styles.providerFooter}>
         <View
           accessibilityLiveRegion="polite"
-          style={[styles.statusPill, { backgroundColor: theme.backgroundSelected }]}
+          style={[styles.statusPill, { backgroundColor: theme.secondaryContainer }]}
         >
           <ThemedText type="caption" style={{ color: theme.textSecondary }}>
             {statusLabel}
@@ -975,7 +864,7 @@ function EmptyState({
       entering={FadeIn.duration(180)}
       style={[styles.emptyState, { borderColor: theme.separator }]}
     >
-      <View style={[styles.emptyIcon, { backgroundColor: theme.backgroundSelected }]}>
+      <View style={[styles.emptyIcon, { backgroundColor: theme.secondaryContainer }]}>
         <MetricIcon icon={icon} glyph={glyph} size={22} color={theme.textSecondary} />
       </View>
       <ThemedText type="smallBold">{title}</ThemedText>
@@ -1030,7 +919,7 @@ const styles = StyleSheet.create({
   summaryIcon: {
     width: 44,
     height: 44,
-    borderRadius: 14,
+    borderRadius: 20,
     borderCurve: 'continuous',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1053,7 +942,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 44,
+    minHeight: 48,
     paddingHorizontal: Spacing.one,
     borderRadius: 8,
     borderCurve: 'continuous',
@@ -1090,7 +979,7 @@ const styles = StyleSheet.create({
     maxWidth: '100%',
   },
   chip: {
-    minHeight: 44,
+    minHeight: 48,
     borderWidth: StyleSheet.hairlineWidth,
     borderRadius: 999,
     paddingHorizontal: Spacing.three,
@@ -1118,7 +1007,7 @@ const styles = StyleSheet.create({
   exerciseIcon: {
     width: 44,
     height: 44,
-    borderRadius: 14,
+    borderRadius: 20,
     borderCurve: 'continuous',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1159,7 +1048,7 @@ const styles = StyleSheet.create({
     gap: Spacing.one,
   },
   logAgainButton: {
-    minHeight: 44,
+    minHeight: 48,
     justifyContent: 'center',
     paddingHorizontal: Spacing.two,
   },
@@ -1204,7 +1093,7 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.one,
   },
   providerButton: {
-    minHeight: 44,
+    minHeight: 48,
     minWidth: 100,
     borderRadius: 22,
     paddingHorizontal: Spacing.three,
@@ -1222,13 +1111,13 @@ const styles = StyleSheet.create({
   emptyIcon: {
     width: 48,
     height: 48,
-    borderRadius: 16,
+    borderRadius: 24,
     borderCurve: 'continuous',
     alignItems: 'center',
     justifyContent: 'center',
   },
   emptyAction: {
-    minHeight: 44,
+    minHeight: 48,
     borderWidth: StyleSheet.hairlineWidth,
     borderRadius: 20,
     paddingHorizontal: Spacing.three,

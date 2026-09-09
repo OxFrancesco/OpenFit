@@ -1,18 +1,16 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
+import { KeyboardAvoidingView, ScrollView, StyleSheet, View } from 'react-native';
 import {
-  KeyboardAvoidingView,
-  Pressable,
-  ScrollView,
-  StyleSheet,
+  ActivityIndicator,
+  Button,
+  HelperText,
+  SegmentedButtons,
   TextInput,
-  View,
-} from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+} from 'react-native-paper';
 
 import { MetricIcon } from '@/components/metric-icon';
 import { ThemedText } from '@/components/themed-text';
-import { ErrorRed, Fonts, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import {
   formatWeight,
@@ -24,11 +22,7 @@ import {
   type WeightUnit,
   type WorkoutLog,
 } from '@/lib/fitness-domain';
-import {
-  getExerciseById,
-  listWorkoutLogsForExercise,
-  saveWorkoutLog,
-} from '@/lib/fitness-store';
+import { getExerciseById, listWorkoutLogsForExercise, saveWorkoutLog } from '@/lib/fitness-store';
 
 function parseNumber(value: string) {
   const parsed = Number(value.trim().replace(',', '.'));
@@ -92,21 +86,8 @@ export function WorkoutLogForm() {
 
   const bestKg = useMemo(
     () => (exercise ? personalBestKg(exerciseLogs, exercise.id) : 0),
-    [exercise, exerciseLogs]
+    [exercise, exerciseLogs],
   );
-
-  const preview = useMemo(() => {
-    const parsedSets = parseNumber(sets);
-    const parsedReps = parseNumber(reps);
-    const parsedWeight = parseNumber(weight || '0');
-    if (![parsedSets, parsedReps, parsedWeight].every(Number.isFinite)) return null;
-    return {
-      sets: parsedSets,
-      reps: parsedReps,
-      weight: parsedWeight,
-      volumeKg: parsedSets * parsedReps * toKilograms(parsedWeight, unit),
-    };
-  }, [reps, sets, unit, weight]);
 
   const changeUnit = (nextUnit: WeightUnit) => {
     if (nextUnit === unit) return;
@@ -159,349 +140,138 @@ export function WorkoutLogForm() {
     <KeyboardAvoidingView
       style={{ flex: 1, backgroundColor: theme.background }}
       behavior={process.env.EXPO_OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={process.env.EXPO_OS === 'ios' ? 90 : 0}
+      keyboardVerticalOffset={88}
     >
-      <ScrollView
-        style={{ flex: 1 }}
-        contentInsetAdjustmentBehavior="automatic"
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-      >
+      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.scrollContent}>
         <View style={styles.container}>
           {loading ? (
-            <View style={styles.loading}>
-              <ThemedText type="small" style={{ color: theme.textSecondary }}>
-                Loading exercise…
-              </ThemedText>
-            </View>
+            <ActivityIndicator accessibilityLabel="Loading exercise" style={{ marginTop: 64 }} />
           ) : exercise ? (
             <>
-              <Animated.View entering={FadeInDown.duration(280)} style={styles.exerciseHeader}>
-                <View style={[styles.exerciseIcon, { backgroundColor: theme.backgroundSelected }]}>
-                  <MetricIcon icon="dumbbell.fill" glyph="◆" size={24} color={theme.text} />
-                </View>
-                <View style={styles.flex}>
-                  <ThemedText type="subtitle">{exercise.name}</ThemedText>
-                  <ThemedText type="small" style={{ color: theme.textSecondary }}>
+              <View style={[styles.exerciseHeader, { backgroundColor: theme.secondaryContainer }]}>
+                <MetricIcon
+                  icon="dumbbell.fill"
+                  glyph=""
+                  size={32}
+                  color={theme.onSecondaryContainer}
+                />
+                <View style={{ flex: 1, gap: 4 }}>
+                  <ThemedText type="subtitle" style={{ color: theme.onSecondaryContainer }}>
+                    {exercise.name}
+                  </ThemedText>
+                  <ThemedText type="small" style={{ color: theme.onSecondaryContainer }}>
                     {exercise.primaryMuscle} · {exercise.equipment}
                   </ThemedText>
-                  {bestKg ? (
-                    <ThemedText selectable type="caption" style={{ color: theme.textSecondary }}>
-                      Personal best: {formatWeight(bestKg, unit)}
-                    </ThemedText>
+                  {bestKg > 0 ? (
+                    <ThemedText type="small">Personal best {formatWeight(bestKg, unit)}</ThemedText>
                   ) : null}
                 </View>
-              </Animated.View>
-
-              <Animated.View
-                entering={FadeInDown.delay(60).duration(280)}
-                style={[styles.formCard, { backgroundColor: theme.card }]}
-              >
-                <View style={styles.fieldGrid}>
-                  <NumberField label="SETS" value={sets} onChangeText={setSets} />
-                  <NumberField label="REPS" value={reps} onChangeText={setReps} />
-                </View>
-
-                <View style={styles.field}>
-                  <View style={styles.labelRow}>
-                    <ThemedText type="smallBold" style={{ color: theme.textSecondary }}>
-                      WEIGHT
-                    </ThemedText>
-                    <View style={[styles.unitControl, { backgroundColor: theme.backgroundSelected }]}>
-                      {(['kg', 'lb'] as const).map((item) => {
-                        const selected = unit === item;
-                        return (
-                          <Pressable
-                            key={item}
-                            accessibilityRole="radio"
-                            accessibilityState={{ selected }}
-                            onPress={() => changeUnit(item)}
-                            style={({ pressed }) => [
-                              styles.unitButton,
-                              selected && { backgroundColor: theme.text },
-                              pressed && styles.pressed,
-                            ]}
-                          >
-                            <ThemedText
-                              type="smallBold"
-                              style={{ color: selected ? theme.background : theme.textSecondary }}
-                            >
-                              {item}
-                            </ThemedText>
-                          </Pressable>
-                        );
-                      })}
-                    </View>
-                  </View>
-                  <TextInput
-                    accessibilityLabel={`Weight in ${unit}`}
-                    value={weight}
-                    onChangeText={setWeight}
-                    placeholder={exercise.equipment === 'Bodyweight' ? '0 added' : '0'}
-                    placeholderTextColor={theme.textSecondary}
-                    keyboardType="decimal-pad"
-                    inputMode="decimal"
-                    selectTextOnFocus
-                    style={[
-                      styles.weightInput,
-                      { color: theme.text, backgroundColor: theme.backgroundSelected },
-                    ]}
-                  />
-                </View>
-
-                <View style={styles.field}>
-                  <ThemedText type="smallBold" style={{ color: theme.textSecondary }}>
-                    NOTES · OPTIONAL
-                  </ThemedText>
-                  <TextInput
-                    accessibilityLabel="Workout notes"
-                    value={notes}
-                    onChangeText={setNotes}
-                    placeholder="Tempo, form, machine setting…"
-                    placeholderTextColor={theme.textSecondary}
-                    multiline
-                    maxLength={500}
-                    style={[
-                      styles.notesInput,
-                      { color: theme.text, backgroundColor: theme.backgroundSelected },
-                    ]}
-                  />
-                </View>
-              </Animated.View>
-
-              {preview ? (
-                <Animated.View
-                  entering={FadeInDown.delay(100).duration(260)}
-                  style={[styles.previewCard, { borderColor: theme.separator }]}
-                >
-                  <View>
-                    <ThemedText type="smallBold">Entry preview</ThemedText>
-                    <ThemedText type="small" style={{ color: theme.textSecondary }}>
-                      {preview.sets} sets × {preview.reps} reps × {displayInputNumber(preview.weight)} {unit}
-                    </ThemedText>
-                  </View>
-                  <View style={styles.previewVolume}>
-                    <ThemedText selectable type="metric" style={styles.tabular}>
-                      {Math.round(preview.volumeKg)}
-                    </ThemedText>
-                    <ThemedText type="caption" style={{ color: theme.textSecondary }}>
-                      volume kg
-                    </ThemedText>
-                  </View>
-                </Animated.View>
-              ) : null}
-
-              {error ? (
-                <View accessibilityRole="alert" style={styles.errorBanner}>
-                  <ThemedText selectable type="small" style={{ color: ErrorRed }}>
-                    {error}
-                  </ThemedText>
-                </View>
-              ) : null}
-
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`Save ${exercise.name} entry`}
-                accessibilityState={{ disabled: saving, busy: saving }}
-                disabled={saving}
-                onPress={() => void save()}
-                style={({ pressed }) => [
-                  styles.saveButton,
-                  { backgroundColor: theme.text },
-                  saving && styles.disabled,
-                  pressed && styles.pressed,
-                ]}
-              >
-                <ThemedText type="smallBold" style={{ color: theme.background }}>
-                  {saving ? 'Saving…' : 'Log gym entry'}
-                </ThemedText>
-              </Pressable>
-
-              <ThemedText selectable type="caption" style={[styles.localNote, { color: theme.textSecondary }]}>
-                Saved locally in OpenFit. Weight is stored canonically in kilograms and shown in your
-                chosen unit.
-              </ThemedText>
+              </View>
+              <View style={styles.fieldGrid}>
+                <TextInput
+                  mode="outlined"
+                  label="Sets"
+                  accessibilityLabel="Sets"
+                  value={sets}
+                  onChangeText={setSets}
+                  keyboardType="number-pad"
+                  inputMode="numeric"
+                  selectTextOnFocus
+                  style={styles.numberField}
+                />
+                <TextInput
+                  mode="outlined"
+                  label="Reps"
+                  accessibilityLabel="Reps"
+                  value={reps}
+                  onChangeText={setReps}
+                  keyboardType="number-pad"
+                  inputMode="numeric"
+                  selectTextOnFocus
+                  style={styles.numberField}
+                />
+              </View>
+              <View style={styles.weightRow}>
+                <TextInput
+                  mode="outlined"
+                  label={exercise.equipment === 'Bodyweight' ? 'Added weight' : 'Weight'}
+                  accessibilityLabel={`Weight in ${unit}`}
+                  value={weight}
+                  onChangeText={setWeight}
+                  placeholder="0"
+                  keyboardType="decimal-pad"
+                  inputMode="decimal"
+                  selectTextOnFocus
+                  style={{ flex: 1 }}
+                  right={<TextInput.Affix text={unit} />}
+                />
+                <SegmentedButtons
+                  value={unit}
+                  onValueChange={(value) => {
+                    if (value === 'kg' || value === 'lb') changeUnit(value);
+                  }}
+                  buttons={[
+                    { value: 'kg', label: 'kg' },
+                    { value: 'lb', label: 'lb' },
+                  ]}
+                  style={{ width: 144 }}
+                />
+              </View>
+              <TextInput
+                mode="outlined"
+                label="Notes, optional"
+                accessibilityLabel="Workout notes"
+                value={notes}
+                onChangeText={setNotes}
+                placeholder="Form, tempo or machine setting"
+                multiline
+                numberOfLines={4}
+                maxLength={500}
+                style={{ minHeight: 120 }}
+              />
             </>
           ) : (
-            <View accessibilityRole="alert" style={styles.loading}>
-              <ThemedText selectable type="small" style={{ color: ErrorRed }}>
-                {error ?? 'Exercise not found.'}
-              </ThemedText>
-            </View>
+            <ThemedText accessibilityRole="alert" style={{ color: theme.error }}>
+              {error ?? 'Exercise not found.'}
+            </ThemedText>
           )}
+          {exercise && error ? (
+            <HelperText type="error" visible accessibilityRole="alert">
+              {error}
+            </HelperText>
+          ) : null}
         </View>
       </ScrollView>
+      {exercise ? (
+        <View style={styles.actions}>
+          <Button
+            mode="contained"
+            icon="check"
+            loading={saving}
+            disabled={saving}
+            onPress={() => void save()}
+            accessibilityLabel={`Save ${exercise.name} entry`}
+            contentStyle={{ minHeight: 56 }}
+          >
+            Save workout
+          </Button>
+        </View>
+      ) : null}
     </KeyboardAvoidingView>
   );
 }
-
-function NumberField({
-  label,
-  value,
-  onChangeText,
-}: {
-  label: string;
-  value: string;
-  onChangeText: (value: string) => void;
-}) {
-  const theme = useTheme();
-  return (
-    <View style={[styles.field, styles.numberField]}>
-      <ThemedText type="smallBold" style={{ color: theme.textSecondary }}>
-        {label}
-      </ThemedText>
-      <TextInput
-        accessibilityLabel={label.toLocaleLowerCase()}
-        value={value}
-        onChangeText={onChangeText}
-        keyboardType="number-pad"
-        inputMode="numeric"
-        selectTextOnFocus
-        style={[
-          styles.numberInput,
-          { color: theme.text, backgroundColor: theme.backgroundSelected },
-        ]}
-      />
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
-  scrollContent: {
-    alignItems: 'center',
-    paddingHorizontal: Spacing.three,
-    paddingBottom: Spacing.five,
-  },
-  container: {
-    alignSelf: 'stretch',
-    maxWidth: MaxContentWidth,
-    gap: Spacing.four,
-  },
-  loading: {
-    minHeight: 240,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  scrollContent: { padding: 24, alignItems: 'center' },
+  container: { width: '100%', maxWidth: 640, gap: 24 },
   exerciseHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.three,
-    paddingTop: Spacing.two,
+    gap: 20,
+    borderRadius: 28,
+    padding: 24,
   },
-  exerciseIcon: {
-    width: 52,
-    height: 52,
-    borderRadius: 17,
-    borderCurve: 'continuous',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  flex: {
-    flex: 1,
-    gap: Spacing.half,
-  },
-  formCard: {
-    borderRadius: 18,
-    borderCurve: 'continuous',
-    padding: Spacing.three,
-    gap: Spacing.four,
-  },
-  fieldGrid: {
-    flexDirection: 'row',
-    gap: Spacing.three,
-  },
-  field: {
-    gap: Spacing.two,
-  },
-  numberField: {
-    flex: 1,
-  },
-  labelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: Spacing.three,
-  },
-  numberInput: {
-    minHeight: 58,
-    borderRadius: 14,
-    borderCurve: 'continuous',
-    paddingHorizontal: Spacing.three,
-    fontFamily: Fonts.sans,
-    fontSize: 24,
-    fontWeight: '600',
-    fontVariant: ['tabular-nums'],
-  },
-  weightInput: {
-    minHeight: 64,
-    borderRadius: 14,
-    borderCurve: 'continuous',
-    paddingHorizontal: Spacing.three,
-    fontFamily: Fonts.sans,
-    fontSize: 30,
-    fontWeight: '600',
-    fontVariant: ['tabular-nums'],
-  },
-  notesInput: {
-    minHeight: 96,
-    borderRadius: 14,
-    borderCurve: 'continuous',
-    padding: Spacing.three,
-    fontFamily: Fonts.sans,
-    fontSize: 16,
-    textAlignVertical: 'top',
-  },
-  unitControl: {
-    flexDirection: 'row',
-    borderRadius: 9,
-    padding: 2,
-  },
-  unitButton: {
-    minWidth: 44,
-    minHeight: 44,
-    borderRadius: 7,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  previewCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: Spacing.three,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 16,
-    borderCurve: 'continuous',
-    padding: Spacing.three,
-  },
-  previewVolume: {
-    alignItems: 'flex-end',
-  },
-  saveButton: {
-    minHeight: 52,
-    borderRadius: 26,
-    borderCurve: 'continuous',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: Spacing.four,
-  },
-  errorBanner: {
-    borderRadius: 12,
-    borderCurve: 'continuous',
-    backgroundColor: 'rgba(255, 59, 48, 0.1)',
-    padding: Spacing.three,
-  },
-  localNote: {
-    textAlign: 'center',
-    paddingHorizontal: Spacing.three,
-  },
-  tabular: {
-    fontVariant: ['tabular-nums'],
-  },
-  disabled: {
-    opacity: 0.45,
-  },
-  pressed: {
-    opacity: 0.7,
-  },
+  fieldGrid: { flexDirection: 'row', gap: 16 },
+  numberField: { flex: 1 },
+  weightRow: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  actions: { width: '100%', maxWidth: 688, alignSelf: 'center', padding: 24, paddingBottom: 32 },
 });

@@ -1,5 +1,8 @@
-import { Stack } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Button } from 'react-native-paper';
+import { MaterialIcon } from '@/components/material-icon';
+import { loadStoredToken } from '@/lib/token-store';
+import { Stack, router, useFocusEffect } from 'expo-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
@@ -16,7 +19,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LoadingDots } from '@/components/loading';
 import { MetricIcon } from '@/components/metric-icon';
 import { ThemedText } from '@/components/themed-text';
-import { ErrorRed, MaxContentWidth, RingColors, Spacing } from '@/constants/theme';
+import { MaxContentWidth, RingColors, Spacing } from '@/constants/theme';
 import { useHealthCoach } from '@/hooks/use-health-coach';
 import { useTheme } from '@/hooks/use-theme';
 import type { CoachMessage } from '@/lib/coach-api';
@@ -29,6 +32,26 @@ const STARTERS = [
 ];
 
 export default function CoachScreen() {
+  const theme = useTheme();
+  const [session, setSession] = useState<'loading' | 'connected' | 'signed-out'>('loading');
+  useFocusEffect(useCallback(() => {
+    let active = true;
+    loadStoredToken().then(token => { if (active) setSession(token ? 'connected' : 'signed-out'); }).catch(() => { if (active) setSession('signed-out'); });
+    return () => { active = false; };
+  }, []));
+  if (session === 'loading') return <ActivityIndicator style={{ flex: 1 }} accessibilityLabel="Restoring connection" />;
+  if (session === 'signed-out') return <ScrollView contentContainerStyle={{ padding: 24, alignItems: 'center' }}>
+    <View style={{ maxWidth: 640, width: '100%', gap: 24, padding: 28, backgroundColor: theme.tertiaryContainer, borderRadius: 32 }}>
+      <MaterialIcon name="chat-bubble-outline" size={40} color={theme.onTertiaryContainer} />
+      <ThemedText type="title" style={{ color: theme.onTertiaryContainer }}>Ask about your health</ThemedText>
+      <ThemedText style={{ color: theme.onTertiaryContainer }}>Connect Google Health to discuss your activity, sleep and nutrition with the coach.</ThemedText>
+      <Button mode="contained" onPress={() => router.replace('/')} contentStyle={{ minHeight: 52 }}>Connect Google Health</Button>
+    </View>
+  </ScrollView>;
+  return <CoachConversation />;
+}
+
+function CoachConversation() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
@@ -72,7 +95,7 @@ export default function CoachScreen() {
           headerRight: () =>
             messages.length ? (
               <Pressable accessibilityRole="button" onPress={confirmClear} hitSlop={10}>
-                <ThemedText type="smallBold" style={{ color: ErrorRed }}>
+                <ThemedText type="smallBold" style={{ color: theme.error }}>
                   Delete
                 </ThemedText>
               </Pressable>
@@ -108,15 +131,15 @@ export default function CoachScreen() {
               <View style={[styles.thinkingBubble, { backgroundColor: theme.card }]}>
                 <LoadingDots color={theme.textSecondary} />
                 <ThemedText type="small" style={{ color: theme.textSecondary }}>
-                  {transcribing ? 'Transcribing with ElevenLabs' : loading ? 'Connecting securely' : 'Looking at your data'}
+                  {transcribing ? 'Transcribing voice note' : loading ? 'Connecting' : 'Looking at your data'}
                 </ThemedText>
               </View>
             </Animated.View>
           ) : null}
 
           {error ? (
-            <Animated.View entering={FadeInDown.duration(220)} style={[styles.error, { borderColor: ErrorRed }]}>
-              <ThemedText selectable type="small" style={{ color: ErrorRed }}>
+            <Animated.View entering={FadeInDown.duration(220)} style={[styles.error, { borderColor: theme.error }]}>
+              <ThemedText selectable type="small" style={{ color: theme.error }}>
                 {error}
               </ThemedText>
             </Animated.View>
@@ -154,7 +177,7 @@ export default function CoachScreen() {
               onPress={() => void toggleRecording()}
               style={({ pressed }) => [
                 styles.roundButton,
-                { backgroundColor: recording ? ErrorRed : theme.backgroundSelected },
+                { backgroundColor: recording ? theme.error : theme.backgroundSelected },
                 pressed && styles.pressed,
               ]}
             >
@@ -172,7 +195,7 @@ export default function CoachScreen() {
               onPress={submit}
               style={({ pressed }) => [
                 styles.roundButton,
-                { backgroundColor: text.trim() && !busy ? theme.text : theme.backgroundSelected },
+                { backgroundColor: text.trim() && !busy ? theme.primary : theme.backgroundSelected },
                 pressed && styles.pressed,
               ]}
             >
@@ -180,7 +203,7 @@ export default function CoachScreen() {
                 icon="arrow.up"
                 glyph="↑"
                 size={18}
-                color={text.trim() && !busy ? theme.background : theme.textSecondary}
+                color={text.trim() && !busy ? theme.onPrimary : theme.textSecondary}
               />
             </Pressable>
           </View>
@@ -199,12 +222,12 @@ function CoachWelcome({ onSelect }: { onSelect: (starter: string) => void }) {
     <Animated.View entering={FadeInDown.duration(420)} style={styles.welcome}>
       <CoachMark large />
       <View style={{ gap: Spacing.one, alignItems: 'center' }}>
-        <ThemedText type="subtitle">Your data, in plain language</ThemedText>
+        <ThemedText type="subtitle">What would you like to know?</ThemedText>
         <ThemedText
           type="small"
           style={{ color: theme.textSecondary, textAlign: 'center', maxWidth: 360 }}
         >
-          Ask about patterns in Google Health, or speak a short nutrition note. Your conversation follows you across devices.
+          Ask about your activity, sleep or nutrition.
         </ThemedText>
       </View>
       <View style={styles.starters}>
@@ -241,11 +264,11 @@ function Message({ message }: { message: CoachMessage }) {
         style={[
           styles.message,
           user
-            ? { backgroundColor: theme.text }
+            ? { backgroundColor: theme.primary }
             : { backgroundColor: theme.card, borderColor: theme.separator, borderWidth: StyleSheet.hairlineWidth },
         ]}
       >
-        <ThemedText selectable style={{ color: user ? theme.background : theme.text }}>
+        <ThemedText selectable style={{ color: user ? theme.onPrimary : theme.text }}>
           {message.content}
         </ThemedText>
       </View>
@@ -284,9 +307,9 @@ const styles = StyleSheet.create({
   },
   welcome: {
     flex: 1,
-    minHeight: 430,
+    minHeight: 320,
     justifyContent: 'center',
-    alignItems: 'center',
+    alignItems: 'stretch',
     gap: Spacing.four,
     paddingVertical: Spacing.four,
   },
@@ -295,7 +318,7 @@ const styles = StyleSheet.create({
     minHeight: 48,
     justifyContent: 'center',
     paddingHorizontal: Spacing.three,
-    borderRadius: 14,
+    borderRadius: 24,
     borderCurve: 'continuous',
     borderWidth: StyleSheet.hairlineWidth,
   },
@@ -305,7 +328,7 @@ const styles = StyleSheet.create({
     maxWidth: '84%',
     paddingHorizontal: 14,
     paddingVertical: 11,
-    borderRadius: 18,
+    borderRadius: 24,
     borderCurve: 'continuous',
   },
   mark: { alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
@@ -316,7 +339,7 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
     paddingHorizontal: 14,
     paddingVertical: 11,
-    borderRadius: 18,
+    borderRadius: 24,
     borderCurve: 'continuous',
   },
   error: { borderWidth: 1, borderRadius: 12, borderCurve: 'continuous', padding: Spacing.three },
@@ -342,9 +365,9 @@ const styles = StyleSheet.create({
   },
   input: { flex: 1, minHeight: 40, maxHeight: 120, fontSize: 16, lineHeight: 21, paddingVertical: 9 },
   roundButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
   },

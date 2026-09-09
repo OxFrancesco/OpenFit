@@ -516,7 +516,8 @@
       ],
       "expo-audio",
       "expo-asset",
-      "expo-sqlite"
+      "expo-sqlite",
+      "@clerk/expo"
     ],
     "experiments": {
       "typedRoutes": true,

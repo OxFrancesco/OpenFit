@@ -1,10 +1,11 @@
+import { Button, SegmentedButtons, RadioButton } from 'react-native-paper';
 import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { MetricIcon } from '@/components/metric-icon';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { METRIC_CATALOG, METRIC_CATEGORIES, getMetricDef, type MetricCategory } from '@/lib/metric-catalog';
+import { METRIC_CATALOG, METRIC_CATEGORIES, type MetricCategory } from '@/lib/metric-catalog';
 import { WIDGET_SLOT_COLORS } from '@/lib/widget-data';
 
 const SLOT_LABELS = ['First', 'Second', 'Third'] as const;
@@ -52,40 +53,12 @@ export function WidgetEditor({
           <View style={styles.sheetHeader}>
             <View>
               <ThemedText type="subtitle">Widgets</ThemedText>
-              <ThemedText type="small" style={{ color: theme.textSecondary }}>
-                Choose the widget slots
-              </ThemedText>
+
             </View>
-            <Pressable hitSlop={8} onPress={onClose}>
-              <ThemedText type="smallBold">Done</ThemedText>
-            </Pressable>
+            <Button onPress={onClose} contentStyle={{ minHeight: 48 }}>Done</Button>
           </View>
 
-          <View style={[styles.slotTabs, { backgroundColor: theme.backgroundSelected }]}>
-            {slots.map((id, i) => {
-              const active = i === editingSlot;
-              const def = getMetricDef(id);
-
-              return (
-                <Pressable
-                  key={`${i}-${id}`}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: active }}
-                  onPress={() => onEditSlot(i)}
-                  style={({ pressed }) => [
-                    styles.slotTab,
-                    active && { backgroundColor: theme.card },
-                    pressed && styles.pressed,
-                  ]}
-                >
-                  <View style={[styles.slotDot, { backgroundColor: WIDGET_SLOT_COLORS[i] }]} />
-                  <ThemedText type="caption" numberOfLines={1}>
-                    {def?.shortLabel ?? def?.label ?? SLOT_LABELS[i]}
-                  </ThemedText>
-                </Pressable>
-              );
-            })}
-          </View>
+          <SegmentedButtons value={String(editingSlot)} onValueChange={value => onEditSlot(Number(value))} buttons={SLOT_LABELS.map((label, index) => ({ value: String(index), label, accessibilityLabel: `${label} widget metric` }))} />
 
           <ScrollView showsVerticalScrollIndicator={false}>
             {METRIC_CATEGORIES.filter((category) => category !== 'Sleep').map((category) => {
@@ -101,7 +74,7 @@ export function WidgetEditor({
                     type="caption"
                     style={[styles.groupTitle, { color: theme.textSecondary }]}
                   >
-                    {category.toUpperCase()}
+                    {category}
                   </ThemedText>
 
                   {entries.map((entry) => {
@@ -111,8 +84,9 @@ export function WidgetEditor({
                     return (
                       <Pressable
                         key={entry.id}
-                        accessibilityRole="button"
-                        accessibilityState={{ selected, disabled }}
+                        accessibilityLabel={`${entry.label}, ${entry.unit}`}
+                        accessibilityRole="radio"
+                        accessibilityState={{ checked: selected, disabled }}
                         disabled={disabled}
                         onPress={() => onSelect(editingSlot, entry.id)}
                         style={({ pressed }) => [
@@ -134,22 +108,7 @@ export function WidgetEditor({
                             {entry.unit}
                           </ThemedText>
                         </View>
-                        <View
-                          style={[
-                            styles.radio,
-                            { borderColor: theme.textSecondary },
-                            selected && { borderColor: WIDGET_SLOT_COLORS[editingSlot] },
-                          ]}
-                        >
-                          {selected ? (
-                            <View
-                              style={[
-                                styles.radioFill,
-                                { backgroundColor: WIDGET_SLOT_COLORS[editingSlot] },
-                              ]}
-                            />
-                          ) : null}
-                        </View>
+                        <View pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" aria-hidden><RadioButton.Android value={entry.id} status={selected ? 'checked' : 'unchecked'} disabled={disabled} /></View>
                       </Pressable>
                     );
                   })}
@@ -175,7 +134,7 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 380,
     maxHeight: '80%',
-    borderRadius: 12,
+    borderRadius: 24,
     borderCurve: 'continuous',
     padding: Spacing.three,
     gap: Spacing.two,
@@ -220,6 +179,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
   },
   row: {
+    minHeight: 56,
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.three,

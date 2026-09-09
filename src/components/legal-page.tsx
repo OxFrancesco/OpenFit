@@ -31,7 +31,7 @@ export function LegalPage({ title, updated, children }: LegalPageProps) {
         contentContainerStyle={styles.content}
       >
         <View style={styles.header}>
-          <ThemedText type="title">{title}</ThemedText>
+
           <ThemedText type="small" themeColor="textSecondary">
             Effective date: {updated}
           </ThemedText>

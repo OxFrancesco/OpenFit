@@ -3,7 +3,7 @@ import Animated, { FadeInDown, FadeOut, LinearTransition } from 'react-native-re
 
 import { MetricIcon } from '@/components/metric-icon';
 import { ThemedText } from '@/components/themed-text';
-import { ErrorRed, MetricCardMinHeight, Spacing } from '@/constants/theme';
+import { MetricCardMinHeight, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { formatMetricValue, type HealthMetric } from '@/lib/google-health';
 import { type MetricDef } from '@/lib/metric-catalog';
@@ -40,7 +40,7 @@ export function MetricCard({ def, metric }: { def: MetricDef; metric?: HealthMet
         </View>
 
         {metric?.status === 'error' && (
-          <ThemedText type="caption" style={{ color: ErrorRed }} numberOfLines={1}>
+          <ThemedText type="caption" style={{ color: theme.error }} numberOfLines={1}>
             {metric.error}
           </ThemedText>
         )}
@@ -51,7 +51,7 @@ export function MetricCard({ def, metric }: { def: MetricDef; metric?: HealthMet
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 12,
+    borderRadius: 24,
     borderCurve: 'continuous',
     padding: Spacing.three,
     minWidth: 140,

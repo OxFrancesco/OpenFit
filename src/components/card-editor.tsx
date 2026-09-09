@@ -1,3 +1,4 @@
+import { Button, Checkbox } from 'react-native-paper';
 import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { MetricIcon } from '@/components/metric-icon';
@@ -55,13 +56,9 @@ export function CardEditor({
           <View style={styles.sheetHeader}>
             <View>
               <ThemedText type="subtitle">Cards</ThemedText>
-              <ThemedText type="small" style={{ color: theme.textSecondary }}>
-                Choose what shows on your dashboard
-              </ThemedText>
+
             </View>
-            <Pressable hitSlop={8} onPress={onClose}>
-              <ThemedText type="smallBold">Done</ThemedText>
-            </Pressable>
+            <Button onPress={onClose} contentStyle={{ minHeight: 48 }}>Done</Button>
           </View>
 
           <ScrollView showsVerticalScrollIndicator={false}>
@@ -78,7 +75,7 @@ export function CardEditor({
                     type="caption"
                     style={[styles.groupTitle, { color: theme.textSecondary }]}
                   >
-                    {category.toUpperCase()}
+                    {category}
                   </ThemedText>
 
                   {entries.map((entry) => {
@@ -87,8 +84,9 @@ export function CardEditor({
                     return (
                       <Pressable
                         key={entry.id}
-                        accessibilityRole="button"
-                        accessibilityState={{ selected: isOn }}
+                        accessibilityLabel={`${entry.label}, ${entry.unit}`}
+                        accessibilityRole="checkbox"
+                        accessibilityState={{ checked: isOn }}
                         onPress={() => onToggle(entry.id)}
                         style={({ pressed }) => [styles.row, pressed && styles.pressed]}
                       >
@@ -106,19 +104,7 @@ export function CardEditor({
                             </ThemedText>
                           ) : null}
                         </View>
-                        <View
-                          style={[
-                            styles.check,
-                            { borderColor: theme.textSecondary },
-                            isOn && { backgroundColor: theme.text, borderColor: theme.text },
-                          ]}
-                        >
-                          {isOn && (
-                            <ThemedText type="caption" style={{ color: theme.background }}>
-                              ✓
-                            </ThemedText>
-                          )}
-                        </View>
+                        <View pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" aria-hidden><Checkbox.Android status={isOn ? 'checked' : 'unchecked'} /></View>
                       </Pressable>
                     );
                   })}
@@ -144,7 +130,7 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 360,
     maxHeight: '80%',
-    borderRadius: 12,
+    borderRadius: 24,
     borderCurve: 'continuous',
     padding: Spacing.three,
     gap: Spacing.two,
@@ -165,6 +151,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
   },
   row: {
+    minHeight: 56,
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.three,

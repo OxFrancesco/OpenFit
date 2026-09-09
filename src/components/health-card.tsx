@@ -42,7 +42,7 @@ const styles = StyleSheet.create({
   card: {
     flex: 1,
     minWidth: 140,
-    borderRadius: 12,
+    borderRadius: 24,
     borderCurve: 'continuous',
     padding: Spacing.three,
     gap: Spacing.one,

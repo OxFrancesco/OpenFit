@@ -1,67 +1,114 @@
-import { DarkTheme, DefaultTheme, router, Stack, ThemeProvider } from 'expo-router';
+import { ClerkProvider, useUser } from '@clerk/expo';
+import { tokenCache } from '@clerk/expo/token-cache';
+import { Stack, router } from 'expo-router';
+import { View, useWindowDimensions } from 'react-native';
+import { Appbar, ActivityIndicator } from 'react-native-paper';
+import {
+  useFonts,
+  Roboto_400Regular,
+  Roboto_500Medium,
+  Roboto_700Bold,
+} from '@expo-google-fonts/roboto';
 import { StatusBar } from 'expo-status-bar';
-import { Pressable, useColorScheme } from 'react-native';
-
-import { AnimatedSplashOverlay } from '@/components/animated-icon';
-import { ThemedText } from '@/components/themed-text';
-import { Colors } from '@/constants/theme';
+import { MaterialProvider } from '@/components/material-provider';
+import { MaterialNavigation, useMainDestination } from '@/components/material-navigation';
+import { useTheme } from '@/hooks/use-theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
-  const colors = isDark ? Colors.dark : Colors.light;
-
-  const baseTheme = isDark ? DarkTheme : DefaultTheme;
-  const navTheme = {
-    ...baseTheme,
-    colors: {
-      ...baseTheme.colors,
-      background: colors.background,
-      card: colors.background,
-      text: colors.text,
-      border: colors.separator,
-      primary: colors.text,
-    },
-  };
-
+  const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY;
+  if (!publishableKey)
+    throw new Error('Set EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY before starting OpenFit.');
   return (
-    <ThemeProvider value={navTheme}>
-      <StatusBar style={isDark ? 'light' : 'dark'} />
-      <AnimatedSplashOverlay />
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen
-          name="fitness"
-          options={{
-            headerShown: true,
-            title: 'Fitness',
-            headerBackTitle: 'Health',
-            headerStyle: { backgroundColor: colors.background },
-            headerTintColor: colors.text,
-            headerShadowVisible: false,
+    <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
+      <AppLayout />
+    </ClerkProvider>
+  );
+}
+
+function AppLayout() {
+  const { user } = useUser();
+  const [loaded, error] = useFonts({ Roboto_400Regular, Roboto_500Medium, Roboto_700Bold });
+  const theme = useTheme();
+  const scheme = useColorScheme();
+  const { width } = useWindowDimensions();
+  const destination = useMainDestination();
+  const rail = width >= 840 && destination >= 0;
+  return (
+    <MaterialProvider>
+      <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
+      {!loaded && !error ? (
+        <View style={{ flex: 1, backgroundColor: theme.background, justifyContent: 'center' }}>
+          <ActivityIndicator />
+        </View>
+      ) : (
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: theme.background,
+            flexDirection: rail ? 'row' : 'column',
           }}
-        />
-        <Stack.Screen
-          name="log-workout"
-          options={{
-            headerShown: true,
-            title: 'Log exercise',
-            presentation: 'modal',
-            headerStyle: { backgroundColor: colors.background },
-            headerTintColor: colors.text,
-            headerShadowVisible: false,
-            headerLeft: () => (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Close workout form"
-                hitSlop={10}
-                onPress={() => router.back()}
-              >
-                <ThemedText type="smallBold">Cancel</ThemedText>
-              </Pressable>
-            ),
-          }}
-        />
-      </Stack>
-    </ThemeProvider>
+        >
+          {rail ? <MaterialNavigation /> : null}
+          <View style={{ flex: 1 }}>
+            <Stack
+              screenOptions={{
+                headerShown: true,
+                contentStyle: { backgroundColor: theme.background },
+                header: ({ options, route, back, navigation }) => (
+                  <Appbar.Header mode="small" style={{ backgroundColor: theme.background }}>
+                    {back &&
+                    !['index', 'fitness', 'coach', 'settings', 'log-workout'].includes(
+                      route.name,
+                    ) ? (
+                      <Appbar.BackAction
+                        accessibilityLabel="Go back"
+                        onPress={() => navigation.goBack()}
+                      />
+                    ) : null}
+                    <Appbar.Content
+                      title={options.title ?? route.name}
+                      titleStyle={{ fontFamily: 'Roboto_500Medium' }}
+                    />
+                    {route.name === 'index' ? (
+                      <Appbar.Action
+                        icon="account-circle-outline"
+                        accessibilityLabel={user ? 'Your OpenFit account' : 'Sign in to OpenFit'}
+                        onPress={() => router.push('/account')}
+                      />
+                    ) : null}
+                    {options.headerRight?.({ canGoBack: Boolean(back), tintColor: theme.primary })}
+                  </Appbar.Header>
+                ),
+              }}
+            >
+              <Stack.Screen name="index" options={{ title: 'OpenFit' }} />
+              <Stack.Screen name="fitness" options={{ title: 'Workouts' }} />
+              <Stack.Screen name="coach" options={{ title: 'Coach' }} />
+              <Stack.Screen name="settings" options={{ title: 'Settings' }} />
+              <Stack.Screen
+                name="log-workout"
+                options={{
+                  title: 'Log exercise',
+                  presentation: 'modal',
+                  headerRight: () => (
+                    <Appbar.Action
+                      icon="close"
+                      accessibilityLabel="Close workout form"
+                      onPress={() => router.back()}
+                    />
+                  ),
+                }}
+              />
+              <Stack.Screen name="account" options={{ title: 'Account' }} />
+              <Stack.Screen name="privacy" options={{ title: 'Privacy' }} />
+              <Stack.Screen name="terms" options={{ title: 'Terms' }} />
+              <Stack.Screen name="support" options={{ title: 'Support' }} />
+            </Stack>
+          </View>
+          {!rail ? <MaterialNavigation /> : null}
+        </View>
+      )}
+    </MaterialProvider>
   );
 }
