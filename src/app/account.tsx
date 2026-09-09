@@ -1,3 +1,5 @@
+import { useGoogleLogin } from '@/hooks/use-google-login';
+import { clearHealthSession } from '@/lib/clear-health-session';
 import { useAuth, useClerk, useSignIn, useSignUp, useUser } from '@clerk/expo';
 import { Stack, router } from 'expo-router';
 import { useState } from 'react';
@@ -14,6 +16,7 @@ import { useTheme } from '@/hooks/use-theme';
 
 export default function AccountScreen() {
   const theme = useTheme();
+  const googleLogin = useGoogleLogin();
   const { isLoaded, isSignedIn } = useAuth();
   const { user } = useUser();
   const { signOut } = useClerk();
@@ -25,6 +28,14 @@ export default function AccountScreen() {
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  async function loginWithGoogle() {
+    setBusy(true);
+    setError(null);
+    try { await googleLogin(); }
+    catch (cause) { setError(cause instanceof Error ? cause.message : 'Could not sign in with Google.'); }
+    finally { setBusy(false); }
+  }
 
   async function sendCode() {
     setBusy(true);
@@ -85,6 +96,7 @@ export default function AccountScreen() {
     setError(null);
     try {
       await signOut();
+      await clearHealthSession();
       setSent(false);
       setCode('');
     } catch {
@@ -121,7 +133,7 @@ export default function AccountScreen() {
                 <ThemedText>{user?.primaryEmailAddress?.emailAddress}</ThemedText>
               </View>
               <ThemedText type="small" themeColor="textSecondary">
-                Workouts and health connections remain on this device.
+                Workouts remain on this device after you sign out.
               </ThemedText>
               <Button
                 mode="contained"
@@ -129,6 +141,9 @@ export default function AccountScreen() {
                 contentStyle={{ minHeight: 56 }}
               >
                 Go to workouts
+              </Button>
+              <Button mode="outlined" onPress={loginWithGoogle} loading={busy} disabled={busy}>
+                {user?.externalAccounts.some(account => account.provider === 'google') ? 'Reconnect Google Health' : 'Connect Google Health'}
               </Button>
               <Button
                 mode="outlined"
@@ -188,6 +203,9 @@ export default function AccountScreen() {
                 </>
               ) : (
                 <>
+                  <Button mode="contained" icon="google" onPress={loginWithGoogle} loading={busy} disabled={busy} contentStyle={{ minHeight: 56 }}>
+                    Continue with Google
+                  </Button>
                   <SegmentedButtons
                     value={mode}
                     onValueChange={(value) => {

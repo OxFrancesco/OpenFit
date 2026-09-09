@@ -1,3 +1,4 @@
+import { GoogleConnectionError, googleTokenForClerkUser } from "../../../shared/clerk-google";
 import { Agent, routeAgentRequest } from "agents";
 
 import { decryptJson, encryptJson, type EncryptedJson } from "./crypto";
@@ -72,6 +73,7 @@ type StoredRefreshToken = {
 };
 
 type AppEnv = Env & FitnessOAuthEnv & {
+  CLERK_SECRET_KEY: string;
   GOOGLE_CLIENT_ID: string;
   GOOGLE_CLIENT_SECRET: string;
   HEALTH_AGENT_API_TOKEN: string;
@@ -86,7 +88,8 @@ type HealthAgentState = {
   fitness?: Partial<Record<FitnessProvider, EncryptedFitnessConnection>>;
   google?: {
     connectedAt: string;
-    refreshToken: EncryptedJson;
+    refreshToken?: EncryptedJson;
+    clerkUserId?: string;
     scope?: string;
   };
 };
@@ -229,6 +232,22 @@ export class FittyHealthAgent extends Agent<AppEnv, HealthAgentState> {
         );
       }
 
+      if (request.method === "POST" && path === "/connect-clerk") {
+        const body = await readJson(request);
+        if (!isRecord(body) || typeof body.userId !== "string" || !body.userId.startsWith("user_")) {
+          throw new HttpError(400, "Invalid account connection");
+        }
+        const token = await googleTokenForClerkUser(this.env.CLERK_SECRET_KEY, body.userId, this.name);
+        await this.withStateMutation(async () => {
+          this.setState({ ...this.state, google: {
+            connectedAt: new Date().toISOString(),
+            clerkUserId: token.clerkUserId,
+            scope: token.scope
+          } });
+        });
+        return jsonResponse({ connected: true }, request, this.env);
+      }
+
       if (request.method === "POST" && path === "/connect") {
         const body = parseConnectInput(await readJson(request));
         return jsonResponse(
@@ -274,7 +293,7 @@ export class FittyHealthAgent extends Agent<AppEnv, HealthAgentState> {
 
       throw new HttpError(404, "Not found");
     } catch (error) {
-      return errorResponse(error, request, this.env);
+      return errorResponse(error instanceof GoogleConnectionError ? new HttpError(error.status, error.message) : error, request, this.env);
     }
   }
 
@@ -627,8 +646,11 @@ export class FittyHealthAgent extends Agent<AppEnv, HealthAgentState> {
     if (!this.state.google) {
       throw new HttpError(409, "Google Health is not connected for this agent instance");
     }
-    if (!this.env.TOKEN_ENCRYPTION_KEY) {
-      throw new HttpError(500, "TOKEN_ENCRYPTION_KEY is not configured");
+    if (this.state.google.clerkUserId) {
+      return (await googleTokenForClerkUser(this.env.CLERK_SECRET_KEY, this.state.google.clerkUserId, this.name)).accessToken;
+    }
+    if (!this.env.TOKEN_ENCRYPTION_KEY || !this.state.google.refreshToken) {
+      throw new HttpError(409, "Reconnect Google Health in Account");
     }
 
     const stored = parseStoredRefreshToken(

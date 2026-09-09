@@ -2,6 +2,7 @@ import { File } from 'expo-file-system';
 
 import { fetchApiJson, getApiBaseUrl } from '@/lib/api-base';
 import { ensureFreshToken } from '@/lib/google-auth';
+import { clerkAuthHeaders } from '@/lib/clerk-session';
 import type { GoogleTokenResponse } from '@/lib/google-health';
 import { loadStoredToken, saveStoredToken } from '@/lib/token-store';
 
@@ -20,38 +21,31 @@ type WireMessage = {
 };
 
 export async function connectHealthCoach() {
-  const token = await requireFreshGoogleToken();
-  if (!token.refreshToken) {
-    throw new Error('Reconnect Google Health to use the coach across devices.');
-  }
+  await requireFreshGoogleToken();
 
   return fetchApiJson<{ connected: boolean }>('/api/coach/connect', {
     method: 'POST',
-    headers: authHeaders(token),
-    body: JSON.stringify({
-      refreshToken: token.refreshToken,
-      scope: token.scope,
-      tokenType: token.tokenType,
-    }),
+    headers: await clerkAuthHeaders(),
+    body: JSON.stringify({ clerk: true }),
   });
 }
 
 export async function fetchCoachMessages() {
-  const token = await requireFreshGoogleToken();
+  await requireFreshGoogleToken();
   const data = await fetchApiJson<{ messages: WireMessage[] }>('/api/coach/messages', {
-    headers: authHeaders(token, false),
+    headers: await clerkAuthHeaders(false),
   });
   return data.messages.map(fromWireMessage);
 }
 
 export async function askHealthCoach(question: string, days = 30) {
-  const token = await requireFreshGoogleToken();
+  await requireFreshGoogleToken();
   const data = await fetchApiJson<{
     answer: string;
     messages: WireMessage[];
   }>('/api/coach/ask', {
     method: 'POST',
-    headers: authHeaders(token),
+    headers: await clerkAuthHeaders(),
     body: JSON.stringify({ question, days }),
   });
 
@@ -59,10 +53,10 @@ export async function askHealthCoach(question: string, days = 30) {
 }
 
 export async function deleteCoachConversation() {
-  const token = await requireFreshGoogleToken();
+  await requireFreshGoogleToken();
   const response = await fetch(`${getApiBaseUrl()}/api/coach/messages`, {
     method: 'DELETE',
-    headers: authHeaders(token, false),
+    headers: await clerkAuthHeaders(false),
   });
   if (!response.ok) {
     throw new Error(await responseError(response));
@@ -70,7 +64,7 @@ export async function deleteCoachConversation() {
 }
 
 export async function transcribeCoachRecording(uri: string) {
-  const token = await requireFreshGoogleToken();
+  await requireFreshGoogleToken();
   const isWeb = process.env.EXPO_OS === 'web';
   const bytes = isWeb
     ? new Uint8Array(await (await fetch(uri)).arrayBuffer())
@@ -79,8 +73,7 @@ export async function transcribeCoachRecording(uri: string) {
   const response = await fetch(`${getApiBaseUrl()}/api/coach/transcribe`, {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${token.idToken}`,
-      'X-Google-Access-Token': token.accessToken,
+      ...await clerkAuthHeaders(false),
       'Content-Type': contentType,
     },
     body: bytes as unknown as BodyInit,
@@ -101,22 +94,12 @@ async function requireFreshGoogleToken(): Promise<GoogleTokenResponse> {
   }
 
   const token = await ensureFreshToken(stored);
-  if (!token.idToken) {
-    throw new Error('Reconnect Google so OpenFit can verify your coach session.');
-  }
+
 
   if (token !== stored) {
     await saveStoredToken(token);
   }
   return token;
-}
-
-function authHeaders(token: GoogleTokenResponse, json = true) {
-  return {
-    Authorization: `Bearer ${token.idToken}`,
-    'X-Google-Access-Token': token.accessToken,
-    ...(json ? { 'Content-Type': 'application/json' } : null),
-  };
 }
 
 function fromWireMessage(message: WireMessage): CoachMessage {

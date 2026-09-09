@@ -1,3 +1,4 @@
+import { clerkSession } from './clerk-session';
 import type { GoogleTokenResponse } from '@/lib/google-health';
 
 /** Web counterpart of token-store.ts — SecureStore is unavailable in browsers. */
@@ -5,6 +6,7 @@ import type { GoogleTokenResponse } from '@/lib/google-health';
 const TOKEN_KEY = 'fitty.google_token';
 
 export async function saveStoredToken(token: GoogleTokenResponse) {
+  if (!token.clerkUserId || token.clerkUserId !== (await clerkSession())?.user.id) return;
   if (typeof localStorage === 'undefined') {
     return;
   }
@@ -24,7 +26,9 @@ export async function loadStoredToken(): Promise<GoogleTokenResponse | null> {
   }
 
   try {
-    return JSON.parse(raw) as GoogleTokenResponse;
+    const token = JSON.parse(raw) as GoogleTokenResponse;
+    if (!token.clerkUserId || token.clerkUserId !== (await clerkSession())?.user.id) return null;
+    return token;
   } catch {
     localStorage.removeItem(TOKEN_KEY);
     return null;

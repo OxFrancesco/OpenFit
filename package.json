@@ -3,6 +3,7 @@
   "main": "index.ts",
   "version": "1.0.0",
   "dependencies": {
+    "@clerk/backend": "^3.17.1",
     "@clerk/expo": "^4.6.5",
     "@expo-google-fonts/roboto": "^0.4.3",
     "@expo/ui": "~56.0.21",

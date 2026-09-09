@@ -5,8 +5,7 @@ import type {
   FitnessConnectionsResponse,
   FitnessOAuthStartResponse,
 } from '@/lib/fitness-connections-contract';
-import { ensureFreshToken } from '@/lib/google-auth';
-import { loadStoredToken, saveStoredToken } from '@/lib/token-store';
+import { clerkAuthHeaders } from '@/lib/clerk-session';
 
 export async function fetchFitnessConnections() {
   return fetchApiJson<FitnessConnectionsResponse>('/api/fitness/connections', {
@@ -50,23 +49,5 @@ export async function disconnectFitnessConnection(
 }
 
 async function fitnessConnectionAuthHeaders(json = true) {
-  const stored = await loadStoredToken();
-  if (!stored) {
-    throw new Error('Connect Google Health before adding another fitness service.');
-  }
-
-  const token = await ensureFreshToken(stored);
-  if (!token.idToken) {
-    throw new Error('Reconnect Google so OpenFit can verify your fitness connections.');
-  }
-
-  if (token !== stored) {
-    await saveStoredToken(token);
-  }
-
-  return {
-    Authorization: `Bearer ${token.idToken}`,
-    'X-Google-Access-Token': token.accessToken,
-    ...(json ? { 'Content-Type': 'application/json' } : null),
-  };
+  return clerkAuthHeaders(json);
 }

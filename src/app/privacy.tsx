@@ -45,11 +45,11 @@ export default function PrivacyPolicyScreen() {
 
       <LegalSection title="OpenFit account">
         <LegalParagraph>
-          Optional OpenFit accounts use Clerk for email verification and session management.
+          OpenFit uses Clerk for Google sign-in, email verification and session management.
           Clerk processes your email address, account profile, and authentication session data.
           Native session credentials are stored in secure platform storage. Web sessions use
-          Clerk-managed browser cookies. Signing in does not upload local workouts or health
-          connections to Clerk, and signing out of OpenFit does not remove data stored on this device.
+          Clerk-managed browser cookies. Clerk stores your Google connection and manages its OAuth tokens.
+          Signing out clears cached Health access and widgets. Local workouts remain on this device.
         </LegalParagraph>
       </LegalSection>
 
@@ -141,8 +141,9 @@ export default function PrivacyPolicyScreen() {
           as connection state, connection date, provider account label, and granted permissions.
         </LegalParagraph>
         <LegalParagraph>
-          When you use the coach, OpenFit stores an encrypted Google refresh token on Cloudflare so
-          the coach can access authorized data when answering your questions.
+          When you use the coach, Cloudflare stores your Clerk account reference and requests Google
+          access through Clerk when answering your questions. Older connections may retain an encrypted
+          Google refresh token until they are replaced by the Clerk connection.
         </LegalParagraph>
         <LegalParagraph>
           Coach messages are encrypted at rest and retained for up to 90 days unless you delete the
@@ -158,7 +159,7 @@ export default function PrivacyPolicyScreen() {
         </LegalParagraph>
         <LegalParagraph>
           On iOS and Android, Google OAuth tokens are stored using the operating system&apos;s protected
-          Keychain or Keystore through Expo SecureStore. Coach refresh tokens and messages are
+          Keychain or Keystore through Expo SecureStore. Legacy coach refresh tokens and messages are
           encrypted at rest on Cloudflare.
         </LegalParagraph>
         <LegalParagraph>
@@ -214,8 +215,9 @@ export default function PrivacyPolicyScreen() {
           credential and connection metadata without claiming to perform remote revocation.
         </LegalBullet>
         <LegalBullet>
-          The encrypted server-side Google refresh token remains while your coach connection is
-          active. Revoking OpenFit in your Google Account prevents further Google data access.
+          Clerk retains your Google connection until you remove it. Revoking OpenFit in your Google
+          Account prevents further Google data access. Signing out ends this device session but does
+          not revoke provider consent.
         </LegalBullet>
         <LegalBullet>
           Coach messages are retained for up to 90 days. You can delete the full conversation

@@ -18,6 +18,9 @@ export type GoogleHealthConfig = {
 };
 
 export type GoogleTokenResponse = {
+  clerkUserId?: string;
+  googleSubject?: string;
+  profile?: { name?: string; givenName?: string; email?: string };
   accessToken: string;
   expiresIn?: number;
   idToken?: string;

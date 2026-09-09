@@ -1,3 +1,5 @@
+import { useAuth } from '@clerk/expo';
+import { useGoogleLogin } from '@/hooks/use-google-login';
 import { Button, List, SegmentedButtons } from 'react-native-paper';
 import { MaterialIcon } from '@/components/material-icon';
 import { Link, useFocusEffect, type Href } from 'expo-router';
@@ -14,11 +16,11 @@ import { MetricCard } from '@/components/metric-card';
 import { SleepCard } from '@/components/sleep-card';
 import { ThemedText } from '@/components/themed-text';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
-import { fetchGoogleConfig, useGoogleOAuthFlow } from '@/hooks/use-google-oauth-flow';
+import { fetchGoogleConfig } from '@/hooks/use-google-oauth-flow';
 import { useTheme } from '@/hooks/use-theme';
 import { getApiBaseUrl } from '@/lib/api-base';
 import { DEBUG_ENABLED } from '@/lib/debug';
-import { ensureFreshToken } from '@/lib/google-auth';
+import { ensureFreshToken, fetchClerkGoogleToken } from '@/lib/google-auth';
 import {
   clearSnapshotCache,
   getCachedSnapshot,
@@ -66,6 +68,8 @@ const LEGAL_LINKS: { href: Href; label: string }[] = [
 export default function HomeScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  const { isLoaded: accountLoaded, userId } = useAuth();
+  const googleLogin = useGoogleLogin();
   const [config, setConfig] = useState<GoogleHealthConfig | null>(null);
   const [configError, setConfigError] = useState<string | null>(null);
   const [token, setToken] = useState<GoogleTokenResponse | null>(null);
@@ -279,9 +283,8 @@ export default function HomeScreen() {
           days,
           metricIds: neededIdsRef.current,
         });
-        setCachedSnapshot(days, healthSnapshot);
-
         if (requestIdRef.current === requestId) {
+          setCachedSnapshot(days, healthSnapshot);
           applySnapshot(healthSnapshot);
           setHealthState('loaded');
         }
@@ -301,65 +304,52 @@ export default function HomeScreen() {
     [applySnapshot]
   );
 
-  // Restore a persisted session so sign-in survives app restarts.
-  useEffect(() => {
-    let ignore = false;
+  useFocusEffect(useCallback(() => {
+    if (!accountLoaded) return;
+    let active = true;
+    ++requestIdRef.current;
+    setToken(null);
+    applySnapshot(null);
+    clearSnapshotCache();
+    if (!userId) {
+      setRestoring(false);
+      setAuthState('idle');
+      return;
+    }
+    setRestoring(true);
+    void fetchClerkGoogleToken().then(async fresh => {
+      if (!active) return;
+      await saveStoredToken(fresh);
+      if (!active) return;
+      setToken(fresh);
+      setAuthState('loaded');
+      setError(null);
+      void loadHealthData(fresh.accessToken, 1);
+    }).catch(cause => {
+      if (active) {
+        setAuthState('idle');
+        setError(cause instanceof Error ? cause.message : 'Reconnect Google Health.');
+      }
+    }).finally(() => { if (active) setRestoring(false); });
+    return () => { active = false; ++requestIdRef.current; };
+  }, [accountLoaded, userId, applySnapshot, loadHealthData]));
 
-    async function restoreSession() {
-      try {
-        const stored = await loadStoredToken();
-
-        if (!stored || ignore) {
-          if (!ignore) {
-            await syncWidgets(emptyWidgetData(prefsRef.current)).catch(() => undefined);
-          }
-          return;
-        }
-
-        const fresh = await ensureFreshToken(stored);
-
-        if (ignore) {
-          return;
-        }
-
-        if (fresh !== stored) {
-          await saveStoredToken(fresh);
-        }
-
+  const startGoogleSignIn = async () => {
+    setAuthState('loading');
+    setError(null);
+    try {
+      if (await googleLogin()) {
+        const fresh = await fetchClerkGoogleToken();
+        await saveStoredToken(fresh);
         setToken(fresh);
         setAuthState('loaded');
-        loadHealthData(fresh.accessToken, 1);
-      } catch {
-        // Stored session can no longer be refreshed — require a new sign-in.
-        await clearStoredToken().catch(() => undefined);
-        if (!ignore) {
-          await syncWidgets(emptyWidgetData(prefsRef.current)).catch(() => undefined);
-        }
-      } finally {
-        if (!ignore) {
-          setRestoring(false);
-        }
-      }
+        await loadHealthData(fresh.accessToken, rangeDays);
+      } else setAuthState('idle');
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Could not sign in with Google.');
+      setAuthState('error');
     }
-
-    restoreSession();
-
-    return () => {
-      ignore = true;
-    };
-  }, [loadHealthData]);
-
-  const startGoogleSignIn = useGoogleOAuthFlow({
-    config,
-    loadHealthData,
-    range: rangeDays,
-    setAuthState,
-    setConfig,
-    setConfigError,
-    setError,
-    setToken,
-    token,
-  });
+  };
 
   // Refreshes the access token when it is about to expire, then loads data.
   const loadWithFreshToken = useCallback(
@@ -539,6 +529,7 @@ export default function HomeScreen() {
   }, [token]);
 
   const userName = useMemo(() => {
+    if (token?.profile) return token.profile.givenName || token.profile.name || '';
     if (token?.idToken) {
       const decoded = decodeIdToken(token.idToken);
       return decoded?.given_name ?? decoded?.name ?? 'User';
@@ -586,7 +577,7 @@ export default function HomeScreen() {
                 OpenFit reads the Google Health data you authorize for your dashboard, widgets and optional Apple Health export. The optional coach processes relevant health data and your questions using Cloudflare AI services.
               </ThemedText>
               <ThemedText type="small" themeColor="textSecondary">
-                The coach stores an encrypted Google refresh token. Encrypted messages are retained for up to 90 days. Voice recordings go to ElevenLabs for transcription. OpenFit does not sell your Google Health data or share it with advertisers.
+                Clerk manages your Google connection and refreshes access when needed. Encrypted messages are retained for up to 90 days. Voice recordings go to ElevenLabs for transcription. OpenFit does not sell your Google Health data or share it with advertisers.
               </ThemedText>
             </View>
           </List.Accordion>

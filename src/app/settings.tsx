@@ -1,6 +1,6 @@
-import { useUser } from '@clerk/expo';
+import { useUser, useAuth } from '@clerk/expo';
 import { Button, List } from 'react-native-paper';
-import { Stack, useRouter, type Href } from 'expo-router';
+import { Stack, useRouter, useFocusEffect, type Href } from 'expo-router';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
@@ -12,18 +12,17 @@ import { WidgetEditor } from '@/components/widget-editor';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { syncGoogleHealthToAppleHealth } from '@/lib/apple-health-sync';
-import { unregisterWidgetRefresh } from '@/lib/background-refresh';
 import { loadDashboardPrefs, saveDashboardPrefs } from '@/lib/dashboard-prefs';
 import { defaultPrefs, type DashboardPrefs } from '@/lib/dashboard-prefs-core';
 import { ensureFreshToken } from '@/lib/google-auth';
-import { clearSnapshotCache, getCachedSnapshot, setCachedSnapshot } from '@/lib/health-cache';
+import { getCachedSnapshot, setCachedSnapshot } from '@/lib/health-cache';
 import {
   fetchGoogleHealthSnapshot,
   fetchHealthMetrics,
   type GoogleTokenResponse,
 } from '@/lib/google-health';
 import { getMetricDef } from '@/lib/metric-catalog';
-import { clearStoredToken, loadStoredToken, saveStoredToken } from '@/lib/token-store';
+import { loadStoredToken, saveStoredToken } from '@/lib/token-store';
 import {
   WIDGET_SLOT_COLORS,
   buildWidgetData,
@@ -48,6 +47,7 @@ export default function SettingsScreen() {
   const { user } = useUser();
   const router = useRouter();
   const [prefs, setPrefs] = useState<DashboardPrefs>(defaultPrefs);
+  const { isLoaded: accountLoaded, userId } = useAuth();
   const [token, setToken] = useState<GoogleTokenResponse | null>(null);
   const [restoringSession, setRestoringSession] = useState(true);
   const [accountSyncState, setAccountSyncState] = useState<LoadState>('idle');
@@ -87,7 +87,10 @@ export default function SettingsScreen() {
     };
   }, []);
 
-  useEffect(() => {
+  useFocusEffect(useCallback(() => {
+    if (!accountLoaded) return;
+    setToken(null);
+    if (!userId) { setRestoringSession(false); return; }
     let ignore = false;
 
     async function restoreSession() {
@@ -125,7 +128,7 @@ export default function SettingsScreen() {
     return () => {
       ignore = true;
     };
-  }, []);
+  }, [accountLoaded, userId]));
 
   const persistPrefs = useCallback((next: DashboardPrefs) => {
     prefsRef.current = next;
@@ -228,18 +231,6 @@ export default function SettingsScreen() {
     }
   }, []);
 
-  const signOut = useCallback(() => {
-    clearStoredToken().catch(() => undefined);
-    clearSnapshotCache();
-    syncWidgets(emptyWidgetData(prefsRef.current)).catch(() => undefined);
-    unregisterWidgetRefresh().catch(() => undefined);
-    tokenRef.current = null;
-    setToken(null);
-    setAccountSyncState('idle');
-    setAccountMessage('Signed out.');
-    router.replace('/');
-  }, [router]);
-
   const syncToAppleHealth = useCallback(async () => {
     const current = tokenRef.current;
 
@@ -320,9 +311,9 @@ export default function SettingsScreen() {
               </ThemedText>
             </View>
             <TextButton
-              label={token ? "Disconnect" : "Connect"}
+              label="Manage account"
               color={theme.textSecondary}
-              onPress={token ? signOut : () => router.replace("/")}
+              onPress={() => router.push("/account")}
             />
           </View>
         </Section>

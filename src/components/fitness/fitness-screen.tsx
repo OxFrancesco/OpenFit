@@ -29,7 +29,6 @@ import {
   type WorkoutLog,
 } from '@/lib/fitness-domain';
 import { FITNESS_PROVIDERS, type FitnessProvider } from '@/lib/fitness-providers';
-import { isAccessTokenFresh } from '@/lib/google-auth';
 import {
   deleteWorkoutLog,
   listWorkoutLogs,
@@ -81,9 +80,7 @@ export function FitnessScreen() {
       setGoogleConnected(
         tokenResult.status === 'fulfilled' &&
           Boolean(
-            tokenResult.value?.idToken &&
-              tokenResult.value.accessToken &&
-              (isAccessTokenFresh(tokenResult.value) || tokenResult.value.refreshToken)
+            tokenResult.value?.clerkUserId
           )
       );
     } finally {

@@ -1,3 +1,4 @@
+import { clerkSession } from './clerk-session';
 import * as SecureStore from 'expo-secure-store';
 
 import type { GoogleTokenResponse } from '@/lib/google-health';
@@ -18,6 +19,7 @@ const STORE_OPTIONS: SecureStore.SecureStoreOptions = {
 };
 
 export async function saveStoredToken(token: GoogleTokenResponse) {
+  if (!token.clerkUserId || token.clerkUserId !== (await clerkSession())?.user.id) return;
   const { idToken, ...rest } = token;
 
   await SecureStore.setItemAsync(TOKEN_KEY, JSON.stringify(rest), STORE_OPTIONS);
@@ -38,6 +40,7 @@ export async function loadStoredToken(): Promise<GoogleTokenResponse | null> {
 
   try {
     const token = JSON.parse(raw) as GoogleTokenResponse;
+    if (!token.clerkUserId || token.clerkUserId !== (await clerkSession())?.user.id) return null;
     const idToken = await SecureStore.getItemAsync(ID_TOKEN_KEY);
     return idToken ? { ...token, idToken } : token;
   } catch {

@@ -1,3 +1,5 @@
+import { requireClerkUser } from './clerk-server';
+import { GoogleConnectionError, googleAccountForClerkUser } from '../../shared/clerk-google';
 type GoogleIdTokenClaims = {
   aud: string;
   exp: number;
@@ -18,6 +20,11 @@ export async function requireGoogleSubject(request: Request) {
     throw new CoachApiError(401, 'Sign in with Google to use the coach.');
   }
 
+  const unverified = decodeJwtPart<{ iss?: string }>(idToken.split('.')[1] ?? '');
+  if (!unverified.iss || !GOOGLE_ISSUERS.has(unverified.iss)) {
+    const userId = await requireClerkUser(request);
+    return (await googleAccountForClerkUser(process.env.CLERK_SECRET_KEY, userId)).subject;
+  }
   const claims = await verifyGoogleIdToken(idToken);
   if (claims.exp <= Math.floor(Date.now() / 1000)) {
     const accessToken = request.headers.get('X-Google-Access-Token');
@@ -68,7 +75,7 @@ export class CoachApiError extends Error {
 }
 
 export function coachErrorResponse(error: unknown) {
-  if (error instanceof CoachApiError) {
+  if (error instanceof CoachApiError || error instanceof GoogleConnectionError) {
     return Response.json({ error: error.message }, { status: error.status });
   }
 
