@@ -1,15 +1,14 @@
 import {
   normalizeWidgetBackground,
   type WidgetBackground,
-} from './widget-appearance';
-import * as SecureStore from 'expo-secure-store';
+} from "./widget-appearance";
+import * as SecureStore from "expo-secure-store";
 import {
   DEFAULT_RING_IDS,
   getDefaultGoal,
   getMetricDef,
-} from '@/lib/metric-catalog';
-import type { WidgetData } from '@/lib/widget-data';
-import { WIDGET_SLOT_COLORS } from '@/lib/widget-data';
+} from "@/lib/metric-catalog";
+import type { WidgetData } from "@/lib/widget-data";
 
 export type WidgetPreferences = {
   metrics: string[];
@@ -19,7 +18,7 @@ export type WidgetPreferences = {
 const key = (id: number) => `fitty.widget.${id}`;
 
 export async function loadWidgetPreferences(
-  id: number
+  id: number,
 ): Promise<WidgetPreferences> {
   const raw = await SecureStore.getItemAsync(key(id));
   try {
@@ -28,7 +27,7 @@ export async function loadWidgetPreferences(
       Array.isArray(value?.metrics) &&
       value.metrics.length === 3 &&
       value.metrics.every(
-        (metric: unknown) => typeof metric === 'string' && getMetricDef(metric)
+        (metric: unknown) => typeof metric === "string" && getMetricDef(metric),
       )
     ) {
       return {
@@ -41,13 +40,13 @@ export async function loadWidgetPreferences(
   return {
     metrics: [...DEFAULT_RING_IDS],
     editing: false,
-    background: 'forest',
+    background: "forest",
   };
 }
 
 export async function saveWidgetPreferences(
   id: number,
-  value: WidgetPreferences
+  value: WidgetPreferences,
 ) {
   await SecureStore.setItemAsync(key(id), JSON.stringify(value));
 }
@@ -58,7 +57,7 @@ export async function deleteWidgetPreferences(id: number) {
 
 export function configureWidgetData(
   data: WidgetData | null,
-  prefs: WidgetPreferences
+  prefs: WidgetPreferences,
 ): WidgetData | null {
   if (!data) return null;
   return {
@@ -69,17 +68,17 @@ export function configureWidgetData(
           id,
           label: getMetricDef(id)?.shortLabel ?? getMetricDef(id)?.label ?? id,
           value: 0,
-          display: '--',
-          unit: getMetricDef(id)?.unit ?? '',
+          display: "--",
+          unit: getMetricDef(id)?.unit ?? "",
           goal: getDefaultGoal(id),
           progress: 0,
         }),
       color:
-        prefs.background === 'light'
-          ? (['#005CC5', '#B52B26', '#177D3A'] as const)[index]
-          : prefs.background === 'transparent'
-            ? (['#74B9FF', '#FF9088', '#90E6AD'] as const)[index]
-            : WIDGET_SLOT_COLORS[index],
+        prefs.background === "light"
+          ? (["#005CC5", "#B52B26", "#177D3A"] as const)[index]
+          : prefs.background === "transparent"
+            ? (["#74B9FF", "#FF9088", "#90E6AD"] as const)[index]
+            : (["#77BAFF", "#FF8D86", "#8FDFAB"] as const)[index],
     })),
   };
 }

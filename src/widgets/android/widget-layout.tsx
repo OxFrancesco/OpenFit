@@ -1,10 +1,10 @@
-'use no memo';
+"use no memo";
 
-import type { ReactNode } from 'react';
-import { FlexWidget, TextWidget } from 'react-native-android-widget';
-import type { WidgetData, WidgetSlot } from '@/lib/widget-data';
-import { SECONDARY } from './shared';
-import { widgetPalette, type WidgetBackground } from './widget-appearance';
+import type { ReactNode } from "react";
+import { FlexWidget, TextWidget } from "react-native-android-widget";
+import type { WidgetData, WidgetSlot } from "@/lib/widget-data";
+import { SECONDARY } from "./shared";
+import { widgetPalette, type WidgetBackground } from "./widget-appearance";
 
 export type WidgetProps = {
   data: WidgetData | null;
@@ -22,18 +22,18 @@ export function WidgetFrame({
   children: ReactNode;
   compact?: boolean;
 }) {
-  'use no memo';
+  "use no memo";
   return (
     <FlexWidget
       clickAction="OPEN_APP"
       accessibilityLabel="Open OpenFit"
       style={{
-        width: 'match_parent',
-        height: 'match_parent',
+        width: "match_parent",
+        height: "match_parent",
         backgroundColor: widgetPalette(background).background,
         borderRadius: compact ? 22 : 28,
         padding: compact ? 8 : 12,
-        flexDirection: 'column',
+        flexDirection: "column",
       }}
     >
       {children}
@@ -52,15 +52,15 @@ export function MetricValue({
   secondary?: `#${string}`;
   compact?: boolean;
 }) {
-  'use no memo';
+  "use no memo";
   const unit =
-    slot.unit.toLowerCase() === slot.label.toLowerCase() ? '' : slot.unit;
+    slot.unit.toLowerCase() === slot.label.toLowerCase() ? "" : slot.unit;
   return (
     <FlexWidget
       style={{
-        width: 'match_parent',
-        flexDirection: 'column',
-        justifyContent: 'center',
+        width: "match_parent",
+        flexDirection: "column",
+        justifyContent: "center",
       }}
     >
       <TextWidget
@@ -74,19 +74,19 @@ export function MetricValue({
       />
       <FlexWidget
         style={{
-          width: 'match_parent',
-          flexDirection: 'row',
-          alignItems: 'center',
+          width: "match_parent",
+          flexDirection: "row",
+          alignItems: "flex-end",
           marginTop: compact ? 1 : 3,
         }}
       >
-        <FlexWidget style={{ flex: 1 }}>
+        <FlexWidget>
           <TextWidget
             text={slot.display}
             maxLines={1}
             style={{
               fontSize: size,
-              fontWeight: 'bold',
+              fontWeight: "bold",
               color: slot.color,
               adjustsFontSizeToFit: true,
             }}
@@ -99,7 +99,8 @@ export function MetricValue({
             style={{
               fontSize: compact ? 9 : 12,
               color: secondary,
-              marginLeft: 5,
+              marginLeft: 4,
+              marginBottom: compact ? 2 : 4,
               adjustsFontSizeToFit: true,
             }}
           />

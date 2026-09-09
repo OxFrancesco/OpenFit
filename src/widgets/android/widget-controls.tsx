@@ -1,13 +1,13 @@
-'use no memo';
+"use no memo";
 
-import { FlexWidget, SvgWidget, TextWidget } from 'react-native-android-widget';
-import { getMetricDef } from '@/lib/metric-catalog';
-import type { WidgetPreferences } from './widget-preferences';
-import { normalizeWidgetBackground } from './widget-appearance';
-import { CARD_BACKGROUND } from './shared';
+import { FlexWidget, SvgWidget, TextWidget } from "react-native-android-widget";
+import { getMetricDef } from "@/lib/metric-catalog";
+import type { WidgetPreferences } from "./widget-preferences";
+import { normalizeWidgetBackground } from "./widget-appearance";
+import { CARD_BACKGROUND } from "./shared";
 
 export function WidgetEditButton({ compact = false }: { compact?: boolean }) {
-  'use no memo';
+  "use no memo";
   return (
     <SvgWidget
       svg='<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="m15 5 4 4M5 19l4-1 11-11a2.8 2.8 0 0 0-4-4L5 14z" fill="none" stroke="#ABB9AF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>'
@@ -31,45 +31,45 @@ export function WidgetControls({
   count: number;
   height?: number;
 }) {
-  'use no memo';
+  "use no memo";
   const small = count === 1;
   const large = height >= 240;
   const background = normalizeWidgetBackground(prefs.background);
   const backgroundLabel = {
-    forest: 'Forest',
-    black: 'Black',
-    light: 'Light',
-    tinted: 'Tinted',
-    transparent: 'Transparent',
+    forest: "Forest",
+    black: "Black",
+    light: "Light",
+    tinted: "Tinted",
+    transparent: "Transparent",
   }[background];
   return (
     <FlexWidget
       style={{
-        width: 'match_parent',
-        height: 'match_parent',
-        backgroundColor: '#00000000',
+        width: "match_parent",
+        height: "match_parent",
+        backgroundColor: "#00000000",
       }}
     >
       <FlexWidget
         style={{
-          width: 'match_parent',
-          height: 'wrap_content',
+          width: "match_parent",
+          height: "wrap_content",
           backgroundColor: CARD_BACKGROUND,
           borderRadius: 24,
           padding: small ? 5 : large ? 10 : 8,
-          flexDirection: 'column',
-          justifyContent: 'flex-start',
+          flexDirection: "column",
+          justifyContent: "flex-start",
         }}
       >
         {prefs.metrics.slice(0, count).map((id, slot) => (
           <FlexWidget
             key={slot}
             style={{
-              width: 'match_parent',
-              height: small ? 27 : large ? 38 : 30,
-              flexDirection: 'row',
-              alignItems: 'center',
-              backgroundColor: '#26322B',
+              width: "match_parent",
+              height: small ? 27 : large ? 34 : 30,
+              flexDirection: "row",
+              alignItems: "center",
+              backgroundColor: "#26322B",
               borderRadius: small ? 8 : 12,
               marginBottom: small ? 2 : large ? 6 : 4,
             }}
@@ -82,8 +82,8 @@ export function WidgetControls({
               style={{
                 width: small ? 16 : 36,
                 fontSize: small ? 20 : 25,
-                color: '#EAF3EB',
-                textAlign: 'center',
+                color: "#EAF3EB",
+                textAlign: "center",
               }}
             />
             <FlexWidget style={{ flex: 1 }}>
@@ -93,9 +93,10 @@ export function WidgetControls({
                 }
                 maxLines={1}
                 style={{
+                  width: "match_parent",
                   fontSize: small ? 10 : 13,
-                  color: '#EAF3EB',
-                  textAlign: 'center',
+                  color: "#EAF3EB",
+                  textAlign: "center",
                   adjustsFontSizeToFit: true,
                 }}
               />
@@ -108,8 +109,8 @@ export function WidgetControls({
               style={{
                 width: small ? 16 : 36,
                 fontSize: small ? 20 : 25,
-                color: '#EAF3EB',
-                textAlign: 'center',
+                color: "#EAF3EB",
+                textAlign: "center",
               }}
             />
           </FlexWidget>
@@ -118,13 +119,13 @@ export function WidgetControls({
           clickAction="BACKGROUND"
           accessibilityLabel={`Background: ${backgroundLabel}. Tap for next background.`}
           style={{
-            width: 'match_parent',
-            height: small ? 18 : large ? 32 : 26,
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
+            width: "match_parent",
+            height: small ? 18 : large ? 34 : 30,
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
             paddingHorizontal: small ? 2 : 10,
-            backgroundColor: '#26322B',
+            backgroundColor: "#26322B",
             borderRadius: small ? 6 : 10,
             marginBottom: small ? 2 : large ? 6 : 4,
           }}
@@ -132,7 +133,7 @@ export function WidgetControls({
           {!small ? (
             <TextWidget
               text="Background"
-              style={{ fontSize: 12, color: '#B2C3B6' }}
+              style={{ fontSize: 12, color: "#B2C3B6" }}
             />
           ) : null}
           <TextWidget
@@ -140,7 +141,7 @@ export function WidgetControls({
             maxLines={1}
             style={{
               fontSize: small ? 9 : 12,
-              color: '#EAF3EB',
+              color: "#EAF3EB",
               adjustsFontSizeToFit: true,
             }}
           />
@@ -150,15 +151,15 @@ export function WidgetControls({
           clickAction="DONE"
           accessibilityLabel="Save widget appearance"
           style={{
-            width: 'match_parent',
-            height: small ? 18 : large ? 30 : 26,
+            width: "match_parent",
+            height: small ? 18 : large ? 34 : 30,
             fontSize: small ? 10 : 13,
-            fontWeight: 'bold',
-            color: '#173321',
-            backgroundColor: '#B9E8C9',
+            fontWeight: "bold",
+            color: "#173321",
+            backgroundColor: "#B7E7C5",
             borderRadius: small ? 6 : 10,
-            textAlign: 'center',
-            paddingTop: small ? 1 : large ? 6 : 4,
+            textAlign: "center",
+            paddingTop: small ? 1 : large ? 8 : 6,
           }}
         />
       </FlexWidget>

@@ -11,13 +11,13 @@ export function widgetPalette(background: WidgetBackground = 'forest') {
   const light = background === 'light';
   return {
     background: {
-      forest: '#151C18',
+      forest: '#14201A',
       black: '#101010',
       light: '#F1F5EF',
-      tinted: '#151C1899',
+      tinted: '#14201A99',
       transparent: '#00000000',
     }[background] as `#${string}`,
-    secondary: light ? ('#526056' as const) : ('#CED8D1' as const),
+    secondary: light ? ('#526056' as const) : ('#ABB9AF' as const),
     panel: light
       ? ('#E2E9E0' as const)
       : background === 'transparent'
