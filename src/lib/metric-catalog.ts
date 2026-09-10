@@ -37,7 +37,7 @@ export type MetricDef = {
   defaultCard?: boolean;
 };
 
-// ─── Value helpers (shared with google-health.ts) ──────────────────────────────
+// ─── Value helpers (shared with health-data.ts) ──────────────────────────────
 
 export function toNumber(value: unknown) {
   if (typeof value === 'number' && Number.isFinite(value)) {

@@ -3,12 +3,12 @@ import {
   coachErrorResponse,
   forwardAgentJson,
   healthAgentFetch,
-  requireGoogleSubject,
+  requireAccountSubject,
 } from '@/lib/coach-server';
 
 export async function POST(request: Request) {
   try {
-    const subject = await requireGoogleSubject(request);
+    const subject = await requireAccountSubject(request);
     const body = await request.json();
 
     if (!body || typeof body.question !== 'string') {
@@ -18,7 +18,7 @@ export async function POST(request: Request) {
     return forwardAgentJson(
       await healthAgentFetch(subject, '/ask', {
         method: 'POST',
-        body: JSON.stringify({ question: body.question, days: body.days }),
+        body: JSON.stringify({ question: body.question, days: body.days, deviceHealth: body.deviceHealth }),
       })
     );
   } catch (error) {

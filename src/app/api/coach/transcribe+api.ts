@@ -1,11 +1,11 @@
-import { CoachApiError, coachErrorResponse, requireGoogleSubject } from '@/lib/coach-server';
+import { CoachApiError, coachErrorResponse, requireAccountSubject } from '@/lib/coach-server';
 
 const MAX_AUDIO_BYTES = 15 * 1024 * 1024;
 const SUPPORTED_AUDIO_TYPES = new Set(['audio/m4a', 'audio/mp4', 'audio/webm']);
 
 export async function POST(request: Request) {
   try {
-    await requireGoogleSubject(request);
+    await requireAccountSubject(request);
     const apiKey = process.env.ELEVENLABS_API_KEY;
 
     if (!apiKey) {

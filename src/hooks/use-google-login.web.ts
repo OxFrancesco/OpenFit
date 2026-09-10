@@ -1,5 +1,4 @@
 import { useSignIn, useUser } from '@clerk/expo';
-import { GOOGLE_HEALTH_SCOPES } from '../../shared/clerk-google';
 
 export function useGoogleLogin() {
   const { user } = useUser();
@@ -9,13 +8,13 @@ export function useGoogleLogin() {
       const redirectUrl = `${window.location.origin}/`;
       const existing = user.externalAccounts.find(account => account.provider === 'google');
       const account = existing
-        ? await existing.reauthorize({ redirectUrl, additionalScopes: GOOGLE_HEALTH_SCOPES, oidcPrompt: 'consent' })
-        : await user.createExternalAccount({ strategy: 'oauth_google', redirectUrl, additionalScopes: GOOGLE_HEALTH_SCOPES, oidcPrompt: 'consent' });
+        ? await existing.reauthorize({ redirectUrl })
+        : await user.createExternalAccount({ strategy: 'oauth_google', redirectUrl });
       const url = account.verification?.externalVerificationRedirectURL?.toString();
       if (!url) throw new Error('Google did not return a sign-in link. Please try again.');
       window.location.assign(url);
     } else {
-      const result = await signIn.sso({ strategy: 'oauth_google', redirectUrl: '/', redirectCallbackUrl: '/sso-callback', oidcPrompt: 'consent' });
+      const result = await signIn.sso({ strategy: 'oauth_google', redirectUrl: '/', redirectCallbackUrl: '/sso-callback' });
       if (result.error) throw result.error;
     }
     return false;

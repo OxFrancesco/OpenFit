@@ -9,17 +9,13 @@ import { useTheme } from '@/hooks/use-theme';
 import { defaultPrefs, type DashboardPrefs } from '@/lib/dashboard-prefs-core';
 import { setCachedSnapshot } from '@/lib/health-cache';
 import { saveDashboardPrefs } from '@/lib/dashboard-prefs';
-import type { HealthMetric, HealthSnapshot, SleepSummary } from '@/lib/google-health';
-import { saveStoredToken } from '@/lib/token-store';
+import type { HealthMetric, HealthSnapshot, SleepSummary } from '@/lib/health-data';
 import { buildWidgetData } from '@/lib/widget-data';
 import { syncWidgets } from '@/lib/widget-sync';
 
 const ENABLE_ANDROID_DASHBOARD_FIXTURE =
   Platform.OS === 'android' &&
   (__DEV__ || process.env.EXPO_PUBLIC_ENABLE_ANDROID_DASHBOARD_FIXTURE === '1');
-
-const FIXTURE_ID_TOKEN =
-  'eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJnaXZlbl9uYW1lIjoiQW5kcm9pZCIsIm5hbWUiOiJBbmRyb2lkIFRlc3RlciIsImVtYWlsIjoiYW5kcm9pZC5maXh0dXJlQGV4YW1wbGUudGVzdCJ9.fixture';
 
 const RANGE_DAYS = [1, 7, 14, 30, 90] as const;
 
@@ -130,15 +126,6 @@ function buildSnapshot(days: number): HealthSnapshot {
 async function seedFixture() {
   const prefs = buildPrefs();
   await saveDashboardPrefs(prefs);
-  await saveStoredToken({
-    accessToken: 'android-dashboard-fixture-access-token',
-    expiresIn: 60 * 60,
-    idToken: FIXTURE_ID_TOKEN,
-    refreshToken: 'android-dashboard-fixture-refresh-token',
-    scope: 'fixture',
-    tokenType: 'Bearer',
-    issuedAt: Math.floor(Date.now() / 1000),
-  });
 
   let todaySnapshot: HealthSnapshot | null = null;
   for (const days of RANGE_DAYS) {

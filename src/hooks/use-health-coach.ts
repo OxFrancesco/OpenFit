@@ -15,7 +15,7 @@ import {
   type CoachMessage,
 } from '@/lib/coach-api';
 
-export function useHealthCoach() {
+export function useHealthCoach(shareHealth = false) {
   const [messages, setMessages] = useState<CoachMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
@@ -61,7 +61,7 @@ export function useHealthCoach() {
     ]);
 
     try {
-      const result = await askHealthCoach(text);
+      const result = await askHealthCoach(text, 30, shareHealth);
       if (!mounted.current) return;
       setMessages((current) => [
         ...current.filter((message) => message.id !== optimisticId),
@@ -72,7 +72,7 @@ export function useHealthCoach() {
     } finally {
       if (mounted.current) setSending(false);
     }
-  }, [sending]);
+  }, [sending, shareHealth]);
 
   const clear = useCallback(async () => {
     setError(null);

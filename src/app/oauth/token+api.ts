@@ -1,1 +1,2 @@
-export { OPTIONS, POST } from '@/app/api/google/token+api';
+import { retiredGoogleAccess } from '@/lib/retired-google-access';
+export const POST = retiredGoogleAccess;

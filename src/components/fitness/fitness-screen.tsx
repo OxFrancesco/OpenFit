@@ -1,7 +1,4 @@
-import { Chip, Searchbar, SegmentedButtons } from 'react-native-paper';
-import { router, useFocusEffect, useLocalSearchParams, type Href } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import {
+import { Platform ,
   Alert,
   Linking,
   Pressable,
@@ -9,6 +6,9 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
+import { Chip, Searchbar, SegmentedButtons } from 'react-native-paper';
+import { router, useFocusEffect, useLocalSearchParams, type Href } from 'expo-router';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Animated, { FadeIn, FadeInDown, LinearTransition } from 'react-native-reanimated';
 
 import { MetricIcon } from '@/components/metric-icon';
@@ -34,7 +34,7 @@ import {
   listWorkoutLogs,
   searchExerciseCatalog,
 } from '@/lib/fitness-store';
-import { loadStoredToken } from '@/lib/token-store';
+import { clerkSession } from '@/lib/clerk-session';
 
 type FitnessSection = 'exercises' | 'history' | 'connections';
 
@@ -54,18 +54,18 @@ export function FitnessScreen() {
   const [muscle, setMuscle] = useState<string | null>(null);
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [logs, setLogs] = useState<WorkoutLog[]>([]);
-  const [googleConnected, setGoogleConnected] = useState(false);
+  const [accountConnected, setAccountConnected] = useState(false);
   const [loading, setLoading] = useState(true);
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [statsNow] = useState(() => Date.now());
-  const fitnessConnections = useFitnessConnections(googleConnected);
+  const fitnessConnections = useFitnessConnections(accountConnected);
 
   const refresh = useCallback(async () => {
     try {
       const [logsResult, tokenResult] = await Promise.allSettled([
         listWorkoutLogs(),
-        loadStoredToken(),
+        clerkSession(),
       ]);
 
       if (logsResult.status === 'fulfilled') {
@@ -77,10 +77,10 @@ export function FitnessScreen() {
         );
       }
 
-      setGoogleConnected(
+      setAccountConnected(
         tokenResult.status === 'fulfilled' &&
           Boolean(
-            tokenResult.value?.clerkUserId
+            tokenResult.value?.user.id
           )
       );
     } finally {
@@ -196,8 +196,8 @@ export function FitnessScreen() {
 
         {section === 'connections' ? (
           <Connections
-            googleConnected={googleConnected}
-            googleLoading={loading}
+            accountConnected={accountConnected}
+            accountLoading={loading}
             connections={fitnessConnections.connections}
             busyProvider={fitnessConnections.busyProvider}
             operationInProgress={fitnessConnections.operationInProgress}
@@ -552,8 +552,8 @@ function HistoryStat({ label, value }: { label: string; value: string }) {
 }
 
 function Connections({
-  googleConnected,
-  googleLoading,
+  accountConnected,
+  accountLoading,
   connections,
   busyProvider,
   operationInProgress,
@@ -563,8 +563,8 @@ function Connections({
   failedDisconnectProvider,
   onRemoveLocal,
 }: {
-  googleConnected: boolean;
-  googleLoading: boolean;
+  accountConnected: boolean;
+  accountLoading: boolean;
   connections: readonly FitnessConnectionSummary[];
   busyProvider: ConnectableFitnessProviderId | null;
   operationInProgress: boolean;
@@ -581,16 +581,16 @@ function Connections({
           <ProviderCard
             key={provider.id}
             provider={provider}
-            googleConnected={googleConnected}
-            googleLoading={googleLoading}
+            accountConnected={accountConnected}
+            accountLoading={accountLoading}
             connection={
-              provider.id === 'google-health'
+              provider.id === 'device-health'
                 ? undefined
                 : connections.find((item) => item.provider === provider.id)
             }
-            busy={provider.id !== 'google-health' && busyProvider === provider.id}
+            busy={provider.id !== 'device-health' && busyProvider === provider.id}
             actionsBusy={operationInProgress}
-            loading={provider.id !== 'google-health' && loading}
+            loading={provider.id !== 'device-health' && loading}
             onConnect={onConnect}
             onDisconnect={onDisconnect}
             removeLocalAvailable={failedDisconnectProvider === provider.id}
@@ -604,8 +604,8 @@ function Connections({
 
 function ProviderCard({
   provider,
-  googleConnected,
-  googleLoading,
+  accountConnected,
+  accountLoading,
   connection,
   busy,
   actionsBusy,
@@ -616,8 +616,8 @@ function ProviderCard({
   onRemoveLocal,
 }: {
   provider: FitnessProvider;
-  googleConnected: boolean;
-  googleLoading: boolean;
+  accountConnected: boolean;
+  accountLoading: boolean;
   connection?: FitnessConnectionSummary;
   busy: boolean;
   actionsBusy: boolean;
@@ -628,43 +628,43 @@ function ProviderCard({
   onRemoveLocal: (provider: ConnectableFitnessProviderId) => Promise<void>;
 }) {
   const theme = useTheme();
-  const isGoogle = provider.id === 'google-health';
-  const connected = isGoogle ? googleConnected : connection?.state === 'connected';
-  const unavailable = !isGoogle && connection?.state === 'unavailable';
-  const needsGoogle = !isGoogle && !googleConnected && !googleLoading;
+  const isDevice = provider.id === 'device-health';
+  const connected = isDevice ? false : connection?.state === 'connected';
+  const unavailable = !isDevice && connection?.state === 'unavailable';
+  const needsAccount = !isDevice && !accountConnected && !accountLoading;
   const actionLabel = providerActionLabel({
     busy,
     connected,
-    isGoogle,
+    isDevice,
     loading,
-    needsGoogle,
+    needsAccount,
     provider,
     connection,
     removeLocalAvailable,
-    googleLoading,
+    accountLoading,
   });
   const statusLabel = providerStatusLabel({
     connected,
-    isGoogle,
+    isDevice,
     loading,
-    needsGoogle,
+    needsAccount,
     provider,
     connection,
     removeLocalAvailable,
-    googleLoading,
+    accountLoading,
   });
-  const disabled = actionsBusy || loading || googleLoading;
+  const disabled = actionsBusy || loading || accountLoading;
 
   const handlePress = () => {
-    if (provider.id === 'google-health') {
+    if (provider.id === 'device-health') {
       router.push(connected ? ('/settings' as Href) : ('/' as Href));
       return;
     }
 
     const providerId = provider.id;
 
-    if (needsGoogle) {
-      router.push('/');
+    if (needsAccount) {
+      router.push('/account');
       return;
     }
 
@@ -740,28 +740,28 @@ function ProviderCard({
 function providerActionLabel({
   busy,
   connected,
-  isGoogle,
+  isDevice,
   loading,
-  needsGoogle,
+  needsAccount,
   provider,
   connection,
   removeLocalAvailable,
-  googleLoading,
+  accountLoading,
 }: {
   busy: boolean;
   connected: boolean;
-  isGoogle: boolean;
+  isDevice: boolean;
   loading: boolean;
-  needsGoogle: boolean;
+  needsAccount: boolean;
   provider: FitnessProvider;
   connection?: FitnessConnectionSummary;
   removeLocalAvailable: boolean;
-  googleLoading: boolean;
+  accountLoading: boolean;
 }) {
   if (busy) return 'Working…';
-  if (googleLoading) return 'Checking…';
-  if (isGoogle) return connected ? 'Manage' : 'Connect';
-  if (needsGoogle) return 'Open Health';
+  if (accountLoading) return 'Checking…';
+  if (isDevice) return 'Open Health';
+  if (needsAccount) return 'Sign in';
   if (loading) return 'Checking…';
   if (connected) return removeLocalAvailable ? 'Remove from OpenFit' : 'Disconnect';
   if (connection?.state === 'reauth-required') return 'Reconnect';
@@ -771,27 +771,27 @@ function providerActionLabel({
 
 function providerStatusLabel({
   connected,
-  isGoogle,
+  isDevice,
   loading,
-  needsGoogle,
+  needsAccount,
   provider,
   connection,
   removeLocalAvailable,
-  googleLoading,
+  accountLoading,
 }: {
   connected: boolean;
-  isGoogle: boolean;
+  isDevice: boolean;
   loading: boolean;
-  needsGoogle: boolean;
+  needsAccount: boolean;
   provider: FitnessProvider;
   connection?: FitnessConnectionSummary;
   removeLocalAvailable: boolean;
-  googleLoading: boolean;
+  accountLoading: boolean;
 }) {
-  if (googleLoading) return 'Checking Google';
+  if (accountLoading) return 'Checking account';
   if (connected) return removeLocalAvailable ? 'Revocation not confirmed' : 'Connected';
-  if (isGoogle) return 'Available';
-  if (needsGoogle) return 'Google sign-in required';
+  if (isDevice) return Platform.OS === 'web' ? 'Use the mobile app' : 'On this phone';
+  if (needsAccount) return 'Sign-in required';
   if (loading) return 'Checking server';
   if (connection?.state === 'reauth-required') return 'Reconnect required';
   if (connection?.state === 'disconnected') return 'Available';

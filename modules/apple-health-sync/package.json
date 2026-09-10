@@ -1,9 +1,7 @@
 {
   "name": "apple-health-sync",
   "version": "0.1.0",
-  "description": "Local Expo module for writing Google Health records to Apple Health.",
-  "main": "src/index.ts",
-  "types": "src/index.ts",
+  "description": "Read-only Apple Health access for the OpenFit dashboard and widgets.",
   "private": true,
   "license": "UNLICENSED",
   "peerDependencies": {

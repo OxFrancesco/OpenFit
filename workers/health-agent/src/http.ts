@@ -75,7 +75,7 @@ export function errorResponse(error: unknown, request: Request, env: CorsEnv): R
     return jsonResponse(
       {
         details: error.details,
-        error: error.message || "Google Health API request failed"
+        error: error.message || "Health request failed"
       },
       request,
       env,

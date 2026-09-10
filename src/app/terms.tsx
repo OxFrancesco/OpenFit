@@ -8,7 +8,7 @@ import {
 
 export default function TermsScreen() {
   return (
-    <LegalPage title="OpenFit Terms of Service" updated="July 14, 2026">
+    <LegalPage title="OpenFit Terms of Service" updated="September 10, 2026">
       <LegalSection title="Provider">
         <LegalParagraph>
           OpenFit is provided by {OPENFIT_PROVIDER}. Contact {OPENFIT_CONTACT_EMAIL} with support
@@ -18,8 +18,7 @@ export default function TermsScreen() {
 
       <LegalSection title="Use of OpenFit">
         <LegalParagraph>
-          OpenFit is a personal wellness utility that helps you view Google Health data and, on iOS,
-          manually export selected records to Apple Health. It also provides an offline exercise
+          OpenFit is a personal wellness utility that helps you read device health data from Apple Health on iPhone or Health Connect on Android. It also provides an offline exercise
           library and a device-local manual workout log. An approved hosted deployment may also let
           you establish a connection-only link to your own Strava or Garmin account. You are
           responsible for the Google, Apple, Strava, Garmin, and device accounts you use with
@@ -36,8 +35,8 @@ export default function TermsScreen() {
 
       <LegalSection title="User Permissions">
         <LegalParagraph>
-          OpenFit accesses Google Health and Apple Health data only after you grant permission. You
-          can revoke access in your Google account, Apple Health settings, or device settings.
+          OpenFit accesses Health Connect and Apple Health data only after you grant permission. You
+          can revoke access in Health Connect, Apple Health settings, or device settings.
           Strava and Garmin also require their own authorization. When a connection is available,
           you can withdraw it using Disconnect in Fitness or through the provider account.
         </LegalParagraph>
@@ -52,7 +51,7 @@ export default function TermsScreen() {
         </LegalParagraph>
         <LegalParagraph>
           Strava API materials and data must not be used with the Personal Health-Data Coach or any
-          other AI system, or combined with Google Health, Garmin, manual workout data, or other
+          other AI system, or combined with device health, Garmin, manual workout data, or other
           customer data. Strava and Garmin credentials remain encrypted in the per-user server agent
           and are not returned to the app.
         </LegalParagraph>
@@ -68,7 +67,7 @@ export default function TermsScreen() {
       <LegalSection title="Availability">
         <LegalParagraph>
           OpenFit may change, pause, or stop features as the product evolves or as third-party APIs
-          change. Health data availability depends on Google Health, Apple Health, your devices, and
+          change. Health data availability depends on Health Connect, Apple Health, your devices, and
           the permissions you grant. Garmin requires acceptance into the Garmin Connect Developer
           Program. Strava remains disabled unless the operator receives written Strava clearance
           expressly permitting this use under the API Policy effective June 1, 2026. Credentials or

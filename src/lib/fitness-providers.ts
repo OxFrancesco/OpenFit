@@ -1,4 +1,4 @@
-export type FitnessProviderId = 'google-health' | 'garmin' | 'strava';
+export type FitnessProviderId = 'device-health' | 'garmin' | 'strava';
 
 export type FitnessProvider = {
   id: FitnessProviderId;
@@ -12,13 +12,13 @@ export type FitnessProvider = {
 
 export const FITNESS_PROVIDERS: readonly FitnessProvider[] = [
   {
-    id: 'google-health',
-    name: 'Google Health',
-    detail: 'Fitbit, Pixel Watch, and connected health apps',
+    id: 'device-health',
+    name: 'Device health',
+    detail: 'Apple Health on iPhone or Health Connect on Android',
     statusLabel: 'Available',
     availability: 'available',
     actionLabel: 'Open Health',
-    infoUrl: 'https://developers.google.com/health',
+    infoUrl: 'https://developer.android.com/health-and-fitness/health-connect',
   },
   {
     id: 'garmin',

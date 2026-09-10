@@ -11,5 +11,6 @@ folder to gather information, feedback, patterns, and templates before writing c
 - `resources/react-native-paper` — Material Design 3 components for React Native, theming and accessibility reference
 - `resources/clerk-expo-quickstart` — Official Clerk Expo authentication examples
 - `resources/react-native-android-widget` — Android RemoteViews rendering, click handling and configuration reference
+- `resources/react-native-health-connect` — Health Connect native permission and aggregate reference
 
 <!-- codeview:end -->

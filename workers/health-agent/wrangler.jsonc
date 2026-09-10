@@ -1,6 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "openfit-health-agent",
+  "account_id": "157a8b025a13404b16f11ad7078e53f1",
   "main": "src/index.ts",
   "compatibility_date": "2026-07-10",
   "compatibility_flags": ["nodejs_compat"],

@@ -1,3 +1,5 @@
+> Superseded on 2026-09-10. Do not submit the Google Health or Apple export claims below. The current behavior and release checks are in `docs/device-health-migration.md`. Current legal copy is in `src/app/privacy.tsx` and `src/app/support.tsx`.
+
 # Google Health to Apple Health Sync
 
 Last verified: 2026-06-24

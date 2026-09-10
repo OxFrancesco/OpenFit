@@ -1,6 +1,6 @@
-import { ActivityIndicator, Button } from 'react-native-paper';
+import { ActivityIndicator, Button, Switch } from 'react-native-paper';
 import { MaterialIcon } from '@/components/material-icon';
-import { loadStoredToken } from '@/lib/token-store';
+import { clerkSession } from '@/lib/clerk-session';
 import { Stack, router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -36,7 +36,7 @@ export default function CoachScreen() {
   const [session, setSession] = useState<'loading' | 'connected' | 'signed-out'>('loading');
   useFocusEffect(useCallback(() => {
     let active = true;
-    loadStoredToken().then(token => { if (active) setSession(token ? 'connected' : 'signed-out'); }).catch(() => { if (active) setSession('signed-out'); });
+    clerkSession().then(token => { if (active) setSession(token ? 'connected' : 'signed-out'); }).catch(() => { if (active) setSession('signed-out'); });
     return () => { active = false; };
   }, []));
   if (session === 'loading') return <ActivityIndicator style={{ flex: 1 }} accessibilityLabel="Restoring connection" />;
@@ -44,8 +44,8 @@ export default function CoachScreen() {
     <View style={{ maxWidth: 640, width: '100%', gap: 24, padding: 28, backgroundColor: theme.tertiaryContainer, borderRadius: 32 }}>
       <MaterialIcon name="chat-bubble-outline" size={40} color={theme.onTertiaryContainer} />
       <ThemedText type="title" style={{ color: theme.onTertiaryContainer }}>Ask about your health</ThemedText>
-      <ThemedText style={{ color: theme.onTertiaryContainer }}>Connect Google Health to discuss your activity, sleep and nutrition with the coach.</ThemedText>
-      <Button mode="contained" onPress={() => router.replace('/')} contentStyle={{ minHeight: 52 }}>Connect Google Health</Button>
+      <ThemedText style={{ color: theme.onTertiaryContainer }}>Sign in to OpenFit to use the coach. You can choose whether to share device health data.</ThemedText>
+      <Button mode="contained" onPress={() => router.replace('/account')} contentStyle={{ minHeight: 52 }}>Sign in</Button>
     </View>
   </ScrollView>;
   return <CoachConversation />;
@@ -56,8 +56,9 @@ function CoachConversation() {
   const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
   const [text, setText] = useState('');
+  const [shareHealth, setShareHealth] = useState(false);
   const { busy, clear, error, loading, messages, recording, send, toggleRecording, transcribing } =
-    useHealthCoach();
+    useHealthCoach(shareHealth);
 
   useEffect(() => {
     const timer = setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 80);
@@ -119,6 +120,13 @@ function CoachConversation() {
             { paddingBottom: Spacing.four, maxWidth: MaxContentWidth },
           ]}
         >
+          {Platform.OS !== 'web' && <View style={{ gap: 8, marginBottom: 16 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <ThemedText>Share device health with coach</ThemedText>
+              <Switch value={shareHealth} onValueChange={setShareHealth} disabled={busy} accessibilityLabel="Share device health with coach" />
+            </View>
+            <ThemedText type="small" themeColor="textSecondary">When enabled, each question sends a 30-day health summary to Cloudflare AI. Questions and answers are stored encrypted for up to 90 days. Disable this to send only your messages.</ThemedText>
+          </View>}
           {!messages.length && !loading ? <CoachWelcome onSelect={(starter) => void send(starter)} /> : null}
 
           {messages.map((message) => (

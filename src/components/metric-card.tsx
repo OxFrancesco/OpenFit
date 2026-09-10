@@ -6,7 +6,7 @@ import { MetricIcon } from '@/components/metric-icon';
 import { ThemedText } from '@/components/themed-text';
 import { MetricCardMinHeight, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { type HealthMetric } from '@/lib/google-health';
+import { type HealthMetric } from '@/lib/health-data';
 import { type MetricDef } from '@/lib/metric-catalog';
 
 /**

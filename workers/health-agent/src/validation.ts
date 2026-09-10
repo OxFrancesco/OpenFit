@@ -1,69 +1,13 @@
-import type { GoogleTokenResponse } from "./google-health";
 import { HttpError } from "./http";
 
-export type AskInput = { days?: number; question: string };
-export type ConnectInput = { refreshToken: string; scope?: string; tokenType?: string };
-export type ListDataPointsInput = { dataType: string; filter?: string; pageSize?: number; pageToken?: string };
-export type RollupInput = {
-  dataType: string;
-  endTime: string;
-  pageSize?: number;
-  startTime: string;
-  windowSize?: string;
-};
-export type SnapshotInput = { days?: number };
-
-export function parseGoogleTokenResponse(value: unknown): GoogleTokenResponse {
-  const input = record(value);
-  return {
-    access_token: optionalString(input, "access_token") ?? "",
-    expires_in: optionalNumber(input, "expires_in"),
-    refresh_token: optionalString(input, "refresh_token"),
-    scope: optionalString(input, "scope"),
-    token_type: optionalString(input, "token_type")
-  };
-}
-
-export function parseConnectInput(value: unknown): ConnectInput {
-  const input = record(value);
-  return {
-    refreshToken: requiredString(input, "refreshToken"),
-    scope: optionalString(input, "scope"),
-    tokenType: optionalString(input, "tokenType")
-  };
-}
+export type AskInput = { days?: number; question: string; deviceHealth?: DeviceContext };
 
 export function parseAskInput(value: unknown): AskInput {
   const input = record(value);
   return {
     days: optionalNumber(input, "days"),
-    question: requiredString(input, "question")
-  };
-}
-
-export function parseSnapshotInput(value: unknown): SnapshotInput {
-  const input = record(value);
-  return { days: optionalNumber(input, "days") };
-}
-
-export function parseListDataPointsInput(value: unknown): ListDataPointsInput {
-  const input = record(value);
-  return {
-    dataType: requiredString(input, "dataType"),
-    filter: optionalString(input, "filter"),
-    pageSize: optionalPositiveInteger(input, "pageSize"),
-    pageToken: optionalString(input, "pageToken")
-  };
-}
-
-export function parseRollupInput(value: unknown): RollupInput {
-  const input = record(value);
-  return {
-    dataType: requiredString(input, "dataType"),
-    endTime: requiredString(input, "endTime"),
-    pageSize: optionalPositiveInteger(input, "pageSize"),
-    startTime: requiredString(input, "startTime"),
-    windowSize: optionalString(input, "windowSize")
+    question: requiredString(input, "question"),
+    deviceHealth: parseDeviceContext(input.deviceHealth)
   };
 }
 
@@ -82,17 +26,6 @@ function requiredString(input: Record<string, unknown>, key: string, field = key
   return value;
 }
 
-function optionalString(input: Record<string, unknown>, key: string, field = key): string | undefined {
-  const value = input[key];
-  if (value === undefined) {
-    return undefined;
-  }
-  if (typeof value !== "string") {
-    throw invalid(field, "a string");
-  }
-  return value;
-}
-
 function optionalNumber(input: Record<string, unknown>, key: string): number | undefined {
   const value = input[key];
   if (value === undefined) {
@@ -104,18 +37,36 @@ function optionalNumber(input: Record<string, unknown>, key: string): number | u
   return value;
 }
 
-function optionalPositiveInteger(input: Record<string, unknown>, key: string): number | undefined {
-  const value = optionalNumber(input, key);
-  if (value !== undefined && (!Number.isInteger(value) || value < 1 || value > 10_000)) {
-    throw invalid(key, "an integer from 1 to 10000");
-  }
-  return value;
-}
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function invalid(field: string, expected: string): HttpError {
   return new HttpError(400, `${field} must be ${expected}`);
+}
+
+
+type DeviceContext = { source: string; range: string; metrics: { id: string; label: string; unit: string; value: number | null }[]; sleepSessions: unknown[]; exercises: unknown[] };
+function parseDeviceContext(value: unknown): DeviceContext | undefined {
+  if (value === undefined) return undefined;
+  const input = record(value, "deviceHealth");
+  if (JSON.stringify(input).length > 24000) throw invalid("deviceHealth", "at most 24000 characters");
+  if (input.source !== "Apple Health" && input.source !== "Health Connect") throw invalid("deviceHealth.source", "a device health source");
+  const text = (obj: Record<string, unknown>, key: string) => {
+    const value = requiredString(obj, key);
+    if (value.length > 120) throw invalid(key, "at most 120 characters");
+    return value;
+  };
+  const list = (key: string, max: number) => {
+    const value = input[key];
+    if (!Array.isArray(value) || value.length > max) throw invalid(key, `an array with at most ${max} items`);
+    return value.map(item => record(item, key));
+  };
+  const nullableNumber = (obj: Record<string, unknown>, key: string) => obj[key] === null ? null : optionalNumber(obj, key) ?? null;
+  return {
+    source: input.source, range: text(input, "range"),
+    metrics: list("metrics", 40).map(m => ({ id: text(m,"id"), label: text(m,"label"), unit: text(m,"unit"), value: nullableNumber(m,"value") })),
+    sleepSessions: list("sleepSessions", 200).map(m => ({ startTime: text(m,"startTime"), endTime: text(m,"endTime"), minutesAsleep: nullableNumber(m,"minutesAsleep"), minutesInSleepPeriod: nullableNumber(m,"minutesInSleepPeriod") })),
+    exercises: list("exercises", 200).map(m => ({ name: text(m,"name"), startTime: text(m,"startTime"), endTime: text(m,"endTime"), activeMinutes: nullableNumber(m,"activeMinutes") })),
+  };
 }

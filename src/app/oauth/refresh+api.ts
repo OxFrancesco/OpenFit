@@ -1,1 +1,2 @@
-export { OPTIONS, POST } from '@/app/api/google/refresh+api';
+import { retiredGoogleAccess } from '@/lib/retired-google-access';
+export const POST = retiredGoogleAccess;

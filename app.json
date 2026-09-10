@@ -14,8 +14,7 @@
         "com.apple.developer.healthkit": true
       },
       "infoPlist": {
-        "NSHealthShareUsageDescription": "OpenFit uses Apple Health permissions for synced health records you choose to export.",
-        "NSHealthUpdateUsageDescription": "OpenFit writes selected Google Health weight, sleep, and workout records to Apple Health when you start an export.",
+        "NSHealthShareUsageDescription": "OpenFit reads the health data you choose for your dashboard and widgets. You can separately choose to share a summary with the health coach.",
         "UIBackgroundModes": [
           "fetch",
           "processing",
@@ -34,7 +33,29 @@
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.health.READ_STEPS",
+        "android.permission.health.READ_ACTIVE_CALORIES_BURNED",
+        "android.permission.health.READ_TOTAL_CALORIES_BURNED",
+        "android.permission.health.READ_EXERCISE",
+        "android.permission.health.READ_DISTANCE",
+        "android.permission.health.READ_FLOORS_CLIMBED",
+        "android.permission.health.READ_ELEVATION_GAINED",
+        "android.permission.health.READ_HEART_RATE",
+        "android.permission.health.READ_RESTING_HEART_RATE",
+        "android.permission.health.READ_WEIGHT",
+        "android.permission.health.READ_NUTRITION",
+        "android.permission.health.READ_HYDRATION",
+        "android.permission.health.READ_SLEEP",
+        "android.permission.health.READ_BODY_FAT",
+        "android.permission.health.READ_BODY_TEMPERATURE",
+        "android.permission.health.READ_BLOOD_GLUCOSE",
+        "android.permission.health.READ_OXYGEN_SATURATION",
+        "android.permission.health.READ_RESPIRATORY_RATE",
+        "android.permission.health.READ_VO2_MAX",
+        "android.permission.health.READ_HEART_RATE_VARIABILITY"
+      ]
     },
     "web": {
       "output": "server",
@@ -507,7 +528,8 @@
             ],
             "enableMinifyInReleaseBuilds": true,
             "enableShrinkResourcesInReleaseBuilds": true,
-            "extraProguardRules": "-keep class expo.modules.adapters.react.apploader.RNHeadlessAppLoader { *; }\n"
+            "extraProguardRules": "-keep class expo.modules.adapters.react.apploader.RNHeadlessAppLoader { *; }\n",
+            "minSdkVersion": 26
           }
         }
       ],
@@ -522,7 +544,9 @@
       "expo-asset",
       "expo-sqlite",
       "@clerk/expo",
-      "./plugins/with-widget-bundle-inputs"
+      "./plugins/with-widget-bundle-inputs",
+      "react-native-health-connect",
+      "./plugins/with-health-rationale"
     ],
     "experiments": {
       "typedRoutes": true,

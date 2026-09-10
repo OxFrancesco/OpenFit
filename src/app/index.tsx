@@ -1,9 +1,7 @@
-import { useAuth } from '@clerk/expo';
-import { useGoogleLogin } from '@/hooks/use-google-login';
+import { useAuth, useUser } from '@clerk/expo';
 import { Button, List, SegmentedButtons } from 'react-native-paper';
 import { MaterialIcon } from '@/components/material-icon';
-import { Link, useFocusEffect, type Href } from 'expo-router';
-import { Image } from 'expo-image';
+import { Link, router, useFocusEffect, type Href } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown, FadeOut, LinearTransition } from 'react-native-reanimated';
@@ -16,37 +14,18 @@ import { MetricCard } from '@/components/metric-card';
 import { SleepCard } from '@/components/sleep-card';
 import { ThemedText } from '@/components/themed-text';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
-import { fetchGoogleConfig } from '@/hooks/use-google-oauth-flow';
 import { useTheme } from '@/hooks/use-theme';
 import { getApiBaseUrl } from '@/lib/api-base';
 import { DEBUG_ENABLED } from '@/lib/debug';
-import { ensureFreshToken, fetchClerkGoogleToken } from '@/lib/google-auth';
-import {
-  bindSnapshotAccount,
-  loadCachedSnapshot,
-  clearSnapshotCache,
-  getCachedSnapshot,
-  isSnapshotFresh,
-  setCachedSnapshot,
-} from '@/lib/health-cache';
+import { bindSnapshotAccount, clearSnapshotCache, getCachedSnapshot, setCachedSnapshot } from '@/lib/health-cache';
+import { connectDeviceHealth, fetchHealthSnapshot, fetchHealthMetrics, isHealthEnabled, healthSourceName } from '@/lib/health-source';
 import { registerWidgetRefresh } from '@/lib/background-refresh';
 import { loadDashboardPrefs, saveDashboardPrefs } from '@/lib/dashboard-prefs';
 import { defaultPrefs, type DashboardPrefs } from '@/lib/dashboard-prefs-core';
 import { getDefaultGoal, getMetricDef, SLEEP_CARD_ID } from '@/lib/metric-catalog';
-import { GOOGLE_NATIVE_REDIRECT_URI } from '@/lib/google-oauth-return';
-import { clearStoredToken, loadStoredToken, saveStoredToken } from '@/lib/token-store';
 import { buildWidgetData, emptyWidgetData, getWidgetMetricIds } from '@/lib/widget-data';
 import { syncWidgets } from '@/lib/widget-sync';
-import {
-  fetchGoogleHealthSnapshot,
-  fetchHealthMetrics,
-  mergeSnapshotMetrics,
-  type GoogleHealthConfig,
-  type GoogleTokenResponse,
-  type HealthMetric,
-  type HealthSnapshot,
-} from '@/lib/google-health';
-
+import type { HealthMetric, HealthSnapshot } from '@/lib/health-data';
 type LoadState = 'idle' | 'loading' | 'loaded' | 'error';
 type DashboardRangeDays = 1 | 7 | 14 | 30 | 90;
 
@@ -55,7 +34,7 @@ const RANGE_OPTIONS: { label: string; value: DashboardRangeDays }[] = [
   { label: '7D', value: 7 },
   { label: '14D', value: 14 },
   { label: '30D', value: 30 },
-  { label: '90D', value: 90 },
+  ...(Platform.OS === 'android' ? [] : [{ label: '90D', value: 90 as const }]),
 ];
 const LEGAL_LINKS: { href: Href; label: string }[] = [
   { href: '/privacy' as Href, label: 'Privacy' },
@@ -67,10 +46,8 @@ export default function HomeScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { isLoaded: accountLoaded, userId } = useAuth();
-  const googleLogin = useGoogleLogin();
-  const [config, setConfig] = useState<GoogleHealthConfig | null>(null);
-  const [configError, setConfigError] = useState<string | null>(null);
-  const [token, setToken] = useState<GoogleTokenResponse | null>(null);
+  const { user } = useUser();
+  const [connected, setConnected] = useState(false);
   const [snapshot, setSnapshot] = useState<HealthSnapshot | null>(null);
   const [authState, setAuthState] = useState<LoadState>('idle');
   const [healthState, setHealthState] = useState<LoadState>('idle');
@@ -79,520 +56,82 @@ export default function HomeScreen() {
   const [prefs, setPrefs] = useState<DashboardPrefs>(defaultPrefs);
   const [cardEditorOpen, setCardEditorOpen] = useState(false);
   const [ringEditorSlot, setRingEditorSlot] = useState<number | null>(null);
-  const accountRef = useRef<string | null | undefined>(undefined);
-  const rangeRef = useRef<DashboardRangeDays>(1);
   const [showDebug, setShowDebug] = useState(false);
-  // Render the public sign-in disclosure during web SSR so automated OAuth
-  // verification can inspect the app identity, purpose, and legal links.
   const [restoring, setRestoring] = useState(Platform.OS !== 'web');
-  // True while revalidating in the background — cached data stays on screen.
-  const [, setRefreshing] = useState(false);
-  // Guards against an older fetch overwriting a newer range's data.
-  const requestIdRef = useRef(0);
-  const snapshotRef = useRef<HealthSnapshot | null>(null);
-
-  // Latest prefs for callbacks that must not capture stale state.
+  const generation = useRef(0);
   const prefsRef = useRef(prefs);
-  useEffect(() => {
-    prefsRef.current = prefs;
-  }, [prefs]);
+  useEffect(() => { prefsRef.current = prefs; }, [prefs]);
+  const ownerRef = useRef(userId);
+  useEffect(() => { ownerRef.current = userId; }, [userId]);
+  const neededIds = useMemo(() => [...new Set([...prefs.rings, ...prefs.cards,
+    ...getWidgetMetricIds(prefs, { includeConfigurable: Platform.OS === 'ios' })])].filter(id => id !== SLEEP_CARD_ID), [prefs]);
 
-  // Metrics the dashboard and widgets need: rings, widget slots, and visible cards.
-  const neededIds = useMemo(() => {
-    const ids = new Set<string>();
+  useFocusEffect(useCallback(() => {
+    if (!accountLoaded) return;
+    let active = true;
+    ++generation.current;
+    bindSnapshotAccount(userId ?? null);
+    setSnapshot(null);
+    setConnected(false);
+    Promise.all([loadDashboardPrefs(), isHealthEnabled()]).then(([stored, enabled]) => {
+      if (!active) return;
+      setPrefs(stored); setConnected(enabled); setRestoring(false);
+    }).catch(cause => { if (active) { setError(String(cause)); setRestoring(false); } });
+    return () => { active = false; ++generation.current; };
+  }, [accountLoaded, userId]));
 
-    for (const id of [
-      ...prefs.rings,
-      ...getWidgetMetricIds(prefs, {
-        includeConfigurable: Platform.OS === 'ios',
-      }),
-      ...prefs.cards,
-    ]) {
-      if (id !== SLEEP_CARD_ID && getMetricDef(id)) {
-        ids.add(id);
-      }
-    }
-
-    return [...ids];
-  }, [prefs]);
-
-  const neededIdsRef = useRef(neededIds);
-  useEffect(() => {
-    neededIdsRef.current = neededIds;
-  }, [neededIds]);
-
-  const applySnapshot = useCallback((next: HealthSnapshot | null) => {
-    snapshotRef.current = next;
-    setSnapshot(next);
-  }, []);
-
-  useEffect(() => {
-    let ignore = false;
-
-    async function loadConfig() {
-      try {
-        const data = await fetchGoogleConfig();
-
-        if (!ignore) {
-          setConfig(data);
-          setConfigError(null);
-        }
-      } catch (loadError) {
-        if (!ignore) {
-          setConfigError(loadError instanceof Error ? loadError.message : String(loadError));
-        }
-      }
-    }
-
-    loadConfig();
-
-    return () => {
-      ignore = true;
-    };
-  }, []);
-
-  // Restore persisted dashboard customization and pick up changes made in Settings.
-  useFocusEffect(
-    useCallback(() => {
-      let active = true;
-
-      async function refreshStoredState() {
-        const [storedPrefs, storedToken] = await Promise.all([
-          loadDashboardPrefs(),
-          loadStoredToken(),
-        ]);
-
-        if (!active) {
-          return;
-        }
-
-        setPrefs(storedPrefs);
-
-        if (!storedToken && token) {
-          clearSnapshotCache();
-          setToken(null);
-          applySnapshot(null);
-          setRefreshing(false);
-          setAuthState('idle');
-          setHealthState('idle');
-          setError(null);
-        }
-      }
-
-      refreshStoredState().catch(() => undefined);
-
-      return () => {
-        active = false;
-      };
-    }, [applySnapshot, token])
-  );
-
-  const persistPrefs = useCallback((next: DashboardPrefs) => {
-    setPrefs(next);
-    saveDashboardPrefs(next).catch(() => undefined);
-  }, []);
-
-  const selectRingMetric = useCallback(
-    (slot: number, metricId: string) => {
-      const rings = [...prefsRef.current.rings] as DashboardPrefs['rings'];
-      rings[slot] = metricId;
-      persistPrefs({ ...prefsRef.current, rings });
-    },
-    [persistPrefs]
-  );
-
-  const changeRingGoal = useCallback(
-    (metricId: string, goal: number) => {
-      persistPrefs({
-        ...prefsRef.current,
-        goals: { ...prefsRef.current.goals, [metricId]: goal },
-      });
-    },
-    [persistPrefs]
-  );
-
-  const toggleCard = useCallback(
-    (id: string) => {
-      const current = prefsRef.current;
-      const cards = current.cards.includes(id)
-        ? current.cards.filter((card) => card !== id)
-        : [...current.cards, id];
-      persistPrefs({ ...current, cards });
-    },
-    [persistPrefs]
-  );
-
-  const loadHealthData = useCallback(
-    async (accessToken: string, days: DashboardRangeDays, options?: { force?: boolean }) => {
-      const requestId = ++requestIdRef.current;
-      const cached = getCachedSnapshot(days);
-      setError(null);
-
-      if (cached) {
-        // Instant: render the cached snapshot immediately.
-        applySnapshot(cached.snapshot);
-        setHealthState('loaded');
-
-        if (!options?.force && isSnapshotFresh(cached)) {
-          // A fresh cache may still miss metrics added to rings/cards since.
-          const missing = neededIdsRef.current.filter(
-            (id) => !cached.snapshot.metrics.some((metric) => metric.id === id)
-          );
-
-          if (!missing.length) {
-            // Cancels any superseded in-flight refresh's indicator too.
-            setRefreshing(false);
-            return;
-          }
-
-          setRefreshing(true);
-
-          try {
-            const { metrics, raw } = await fetchHealthMetrics(accessToken, missing, days);
-
-            if (requestIdRef.current === requestId) {
-              const merged = mergeSnapshotMetrics(
-                snapshotRef.current ?? cached.snapshot,
-                metrics,
-                raw
-              );
-              setCachedSnapshot(days, merged);
-              applySnapshot(merged);
-            }
-          } catch {
-            // Top-up failed — the cached snapshot stays on screen.
-          } finally {
-            if (requestIdRef.current === requestId) {
-              setRefreshing(false);
-            }
-          }
-
-          return;
-        }
-      }
-
-      // With anything on screen we revalidate silently; otherwise it's a first load.
-      const background = cached !== null || snapshotRef.current !== null;
-
-      if (background) {
-        setRefreshing(true);
-      } else {
-        setHealthState('loading');
-      }
-
-      try {
-        const ids = neededIdsRef.current;
-        const healthSnapshot = await loadCachedSnapshot(
-          days,
-          ids,
-          () => fetchGoogleHealthSnapshot(accessToken, { days, metricIds: ids }),
-          options?.force
-        );
-        if (requestIdRef.current === requestId) {
-          applySnapshot(healthSnapshot);
-          setHealthState('loaded');
-        }
-      } catch (loadError) {
-        if (requestIdRef.current === requestId) {
-          setError(loadError instanceof Error ? loadError.message : String(loadError));
-          if (!background) {
-            setHealthState('error');
-          }
-        }
-      } finally {
-        if (background && requestIdRef.current === requestId) {
-          setRefreshing(false);
-        }
-      }
-    },
-    [applySnapshot]
-  );
-
-  useFocusEffect(
-    useCallback(() => {
-      if (!accountLoaded) return;
-      let active = true;
-      bindSnapshotAccount(userId ?? null);
-      const accountChanged = accountRef.current !== userId;
-      accountRef.current = userId;
-      if (accountChanged) {
-        ++requestIdRef.current;
-        setToken(null);
-        applySnapshot(null);
-      }
-      if (!userId) {
-        setRestoring(false);
-        setAuthState('idle');
-        return;
-      }
-      if (accountChanged) setRestoring(true);
-      void loadStoredToken()
-        .then((stored) =>
-          stored?.clerkUserId === userId ? ensureFreshToken(stored) : fetchClerkGoogleToken()
-        )
-        .then(async (fresh) => {
-          if (!active) return;
-          await saveStoredToken(fresh);
-          if (!active) return;
-          setToken(fresh);
-          setAuthState('loaded');
-          setError(null);
-          void loadHealthData(fresh.accessToken, rangeRef.current);
-        })
-        .catch((cause) => {
-          if (active) {
-            setAuthState('idle');
-            setError(cause instanceof Error ? cause.message : 'Reconnect Google Health.');
-          }
-        })
-        .finally(() => {
-          if (active) setRestoring(false);
-        });
-      return () => {
-        active = false;
-        ++requestIdRef.current;
-      };
-    }, [accountLoaded, userId, applySnapshot, loadHealthData])
-  );
-
-  useEffect(() => {
-    if (!token || !userId) return;
-    let cancelled = false;
-    const timer = setTimeout(async () => {
-      for (const days of [7, 14, 30, 90] as const) {
-        if (cancelled) return;
-        try {
-          const fresh = await ensureFreshToken(token);
-          if (cancelled) return;
-          await loadCachedSnapshot(days, neededIds, () =>
-            fetchGoogleHealthSnapshot(fresh.accessToken, {
-              days,
-              metricIds: neededIds,
-            })
-          );
-        } catch {
-          return;
-        }
-      }
-    }, 1500);
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-  }, [token, userId, neededIds]);
-
-  const startGoogleSignIn = async () => {
-    setAuthState('loading');
-    setError(null);
+  const loadHealth = useCallback(async () => {
+    if (!connected || !userId) return;
+    const request = ++generation.current;
+    const cached = getCachedSnapshot(rangeDays);
+    setSnapshot(cached?.snapshot ?? null);
+    setHealthState('loading'); setError(null);
     try {
-      if (await googleLogin()) {
-        const fresh = await fetchClerkGoogleToken();
-        await saveStoredToken(fresh);
-        setToken(fresh);
-        setAuthState('loaded');
-        await loadHealthData(fresh.accessToken, rangeDays);
-      } else setAuthState('idle');
+      const next = await fetchHealthSnapshot({ days: rangeDays, metricIds: neededIds });
+      if (generation.current !== request) return;
+      setCachedSnapshot(rangeDays, next); setSnapshot(next); setHealthState('loaded');
+      const widgetMetrics = rangeDays === 1 ? next.metrics : (await fetchHealthMetrics(getWidgetMetricIds(prefsRef.current, { includeConfigurable: Platform.OS === 'ios' }), 1)).metrics;
+      if (generation.current === request) await syncWidgets(buildWidgetData(prefsRef.current, widgetMetrics));
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Could not sign in with Google.');
-      setAuthState('error');
+      if (generation.current === request) { setHealthState('error'); setError(cause instanceof Error ? cause.message : String(cause)); }
     }
+  }, [connected, userId, rangeDays, neededIds]);
+  useEffect(() => {
+    const timer = setTimeout(() => { void loadHealth(); }, 0);
+    return () => { clearTimeout(timer); };
+  }, [loadHealth]);
+  useEffect(() => {
+    if (restoring) return;
+    if (connected) void registerWidgetRefresh().catch(() => undefined);
+    else void syncWidgets(emptyWidgetData(prefs)).catch(() => undefined);
+  }, [connected, restoring, prefs]);
+
+  async function connect() {
+    if (!userId) { router.push('/account'); return; }
+    const owner = userId;
+    setAuthState('loading'); setError(null);
+    try {
+      await connectDeviceHealth();
+      if (ownerRef.current !== owner) return;
+      clearSnapshotCache(); setConnected(true); setAuthState('loaded');
+    } catch (cause) {
+      if (ownerRef.current === owner) { setAuthState('error'); setError(cause instanceof Error ? cause.message : String(cause)); }
+    }
+  }
+  const persistPrefs = useCallback((next: DashboardPrefs) => {
+    setPrefs(next); void saveDashboardPrefs(next).catch(() => undefined);
+  }, []);
+  const selectRingMetric = (slot: number, metricId: string) => {
+    const rings = [...prefs.rings] as DashboardPrefs['rings']; rings[slot] = metricId;
+    persistPrefs({ ...prefs, rings });
   };
-
-  // Refreshes the access token when it is about to expire, then loads data.
-  const loadWithFreshToken = useCallback(
-    async (days: DashboardRangeDays, options?: { force?: boolean }) => {
-      if (!token) {
-        return;
-      }
-
-      const requestId = requestIdRef.current;
-      let current = token;
-
-      try {
-        current = await ensureFreshToken(token);
-      } catch (refreshError) {
-        if (accountRef.current !== token.clerkUserId || requestIdRef.current !== requestId) return;
-        // Refresh token revoked or expired — force a new sign-in.
-        await clearStoredToken().catch(() => undefined);
-        clearSnapshotCache();
-        setToken(null);
-        applySnapshot(null);
-        setRefreshing(false);
-        setAuthState('idle');
-        setHealthState('idle');
-        setError(refreshError instanceof Error ? refreshError.message : String(refreshError));
-        return;
-      }
-
-      if (
-        rangeRef.current !== days ||
-        accountRef.current !== token.clerkUserId ||
-        requestIdRef.current !== requestId
-      )
-        return;
-      if (current !== token) {
-        setToken(current);
-        saveStoredToken(current).catch(() => undefined);
-      }
-
-      loadHealthData(current.accessToken, days, options);
-    },
-    [applySnapshot, loadHealthData, token]
-  );
-
-  // When customization adds a metric we have not fetched yet, top up the
-  // current snapshot in the background instead of reloading everything.
-  useEffect(() => {
-    const current = snapshotRef.current;
-
-    if (!token || !current) {
-      return;
-    }
-
-    const missing = neededIds.filter((id) => !current.metrics.some((metric) => metric.id === id));
-
-    if (!missing.length) {
-      return;
-    }
-
-    let cancelled = false;
-
-    (async () => {
-      setRefreshing(true);
-
-      try {
-        const fresh = await ensureFreshToken(token);
-        const { metrics, raw } = await fetchHealthMetrics(fresh.accessToken, missing, rangeDays);
-        const base = snapshotRef.current;
-
-        if (cancelled || !base) {
-          return;
-        }
-
-        const merged = mergeSnapshotMetrics(base, metrics, raw);
-        setCachedSnapshot(rangeDays, merged);
-        applySnapshot(merged);
-      } catch {
-        // New metrics stay '--' until the next sync.
-      } finally {
-        if (!cancelled) {
-          setRefreshing(false);
-        }
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [applySnapshot, neededIds, rangeDays, token]);
-
-  const updateRangeDays = useCallback(
-    (days: DashboardRangeDays) => {
-      rangeRef.current = days;
-      ++requestIdRef.current;
-      setRangeDays(days);
-      const cached = getCachedSnapshot(days);
-      applySnapshot(cached?.snapshot ?? null);
-      setHealthState(cached ? 'loaded' : 'loading');
-      loadWithFreshToken(days);
-    },
-    [applySnapshot, loadWithFreshToken]
-  );
-
-  const canLogin = authState !== 'loading';
-
-  // First-ever load — nothing cached yet, so show skeleton cards.
+  const changeRingGoal = (metricId: string, goal: number) => persistPrefs({ ...prefs, goals: { ...prefs.goals, [metricId]: goal } });
+  const toggleCard = (id: string) => persistPrefs({ ...prefs, cards: prefs.cards.includes(id) ? prefs.cards.filter(c => c !== id) : [...prefs.cards, id] });
+  const updateRangeDays = (days: DashboardRangeDays) => { ++generation.current; setRangeDays(days); };
   const initialLoading = healthState === 'loading' && !snapshot;
-
-  const metricsMap = useMemo(() => {
-    const map: Record<string, HealthMetric> = {};
-    for (const m of snapshot?.metrics ?? []) {
-      map[m.id] = m;
-    }
-    return map;
-  }, [snapshot?.metrics]);
-
-  const ringSlots: RingSlot[] = useMemo(
-    () =>
-      prefs.rings.map((id) => ({
-        metricId: id,
-        value: metricsMap[id]?.value ?? null,
-        goal: prefs.goals[id] ?? getDefaultGoal(id),
-      })),
-    [prefs.rings, prefs.goals, metricsMap]
-  );
-
-  // Mirror dashboard data onto the home-screen widgets whenever data or widget
-  // customization changes. Widgets always show "today" regardless of the
-  // dashboard's selected range, so top up missing 1-day widget metrics when the
-  // current dashboard range is not Today.
-  useEffect(() => {
-    if (!restoring && !token) {
-      syncWidgets(emptyWidgetData(prefs)).catch(() => undefined);
-    }
-  }, [restoring, token, prefs]);
-
-  useEffect(() => {
-    if (!token) {
-      return;
-    }
-
-    let cancelled = false;
-
-    (async () => {
-      const daySnapshot = rangeDays === 1 ? snapshot : (getCachedSnapshot(1)?.snapshot ?? null);
-      const widgetIds = getWidgetMetricIds(prefs, {
-        includeConfigurable: Platform.OS === 'ios',
-      });
-      let metrics = daySnapshot?.metrics ?? [];
-      const missing = widgetIds.filter((id) => !metrics.some((metric) => metric.id === id));
-
-      if (missing.length) {
-        try {
-          const fresh = await ensureFreshToken(token);
-          const result = await fetchHealthMetrics(fresh.accessToken, missing, 1);
-          metrics = [
-            ...metrics.filter((metric) => !missing.includes(metric.id)),
-            ...result.metrics,
-          ];
-
-          if (daySnapshot) {
-            setCachedSnapshot(1, mergeSnapshotMetrics(daySnapshot, result.metrics, result.raw));
-          }
-        } catch {
-          // Widgets keep the last available values until the next foreground sync.
-          if (!daySnapshot) {
-            return;
-          }
-        }
-      }
-
-      if (!cancelled) {
-        syncWidgets(buildWidgetData(prefs, metrics)).catch(() => undefined);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [token, snapshot, prefs, rangeDays]);
-
-  // Keep widgets fresh while the app is backgrounded.
-  useEffect(() => {
-    if (token) {
-      registerWidgetRefresh().catch(() => undefined);
-    }
-  }, [token]);
-
-  const userName = useMemo(() => {
-    if (token?.profile) return token.profile.givenName || token.profile.name || '';
-    if (token?.idToken) {
-      const decoded = decodeIdToken(token.idToken);
-      return decoded?.given_name ?? decoded?.name ?? 'User';
-    }
-    return 'User';
-  }, [token]);
-
+  const metricsMap = useMemo(() => Object.fromEntries((snapshot?.metrics ?? []).map(m => [m.id, m])) as Record<string, HealthMetric>, [snapshot]);
+  const ringSlots: RingSlot[] = prefs.rings.map(id => ({ metricId: id, value: metricsMap[id]?.value ?? null, goal: prefs.goals[id] ?? getDefaultGoal(id) }));
+  const userName = user?.firstName || user?.fullName || 'User';
   // Greeting — time-aware
   const hour = new Date().getHours();
   const daypart = hour < 12 ? 'morning' : hour < 18 ? 'afternoon' : 'evening';
@@ -604,9 +143,9 @@ export default function HomeScreen() {
   });
 
   // ── Auth gate: sign-in screen when not authenticated ──
-  if (!token) {
+  if (!userId || !connected) {
     // Avoid flashing the sign-in screen while the stored session restores.
-    if (restoring) {
+    if (restoring || !accountLoaded) {
       return (
         <View style={[styles.signInScreen, { backgroundColor: theme.background }]}>
           <LoadingDots color={theme.textSecondary} size={8} />
@@ -624,15 +163,17 @@ export default function HomeScreen() {
           <View style={[styles.connectionCard, { backgroundColor: theme.primaryContainer }]}>
             <MaterialIcon name="monitor-heart" size={40} color={theme.onPrimaryContainer} />
             <ThemedText type="subtitle" style={{ color: theme.onPrimaryContainer }}>
-              Connect Google Health
+              {userId ? `Connect ${healthSourceName}` : 'Sign in to OpenFit'}
             </ThemedText>
             <ThemedText style={{ color: theme.onPrimaryContainer }}>
-              See your activity, sleep and other health data in one place.
+              {Platform.OS === 'web' ? 'Use OpenFit on iPhone or Android to read device health data. Your workouts and account are available here.' : 'Read activity, sleep, heart, body and nutrition data from this phone for your dashboard and widgets. Choose what to allow on the next screen.'}
             </ThemedText>
             {authState === 'loading' ? (
               <LoadingDots color={theme.primary} />
             ) : (
-              <GoogleSignInButton disabled={!canLogin} onPress={startGoogleSignIn} />
+              <Button mode="contained" disabled={Boolean(userId) && Platform.OS === 'web'} onPress={connect}>
+                {userId ? `Choose ${healthSourceName} permissions` : 'Sign in'}
+              </Button>
             )}
           </View>
           {error && <ErrorBanner message={error} />}
@@ -646,15 +187,10 @@ export default function HomeScreen() {
           >
             <View style={styles.signInDisclosureBlock}>
               <ThemedText type="small" themeColor="textSecondary">
-                OpenFit reads the Google Health data you authorize for your dashboard, widgets and
-                optional Apple Health export. The optional coach processes relevant health data and
-                your questions using Cloudflare AI services.
+                Health records are read on your phone. They are not uploaded for the dashboard or widgets. You can separately choose to share a health summary with the coach through Cloudflare AI.
               </ThemedText>
               <ThemedText type="small" themeColor="textSecondary">
-                Clerk manages your Google connection and refreshes access when needed. Encrypted
-                messages are retained for up to 90 days. Voice recordings go to ElevenLabs for
-                transcription. OpenFit does not sell your Google Health data or share it with
-                advertisers.
+                Clerk manages sign-in. Coach messages are encrypted and retained for up to 90 days. Voice recordings go to ElevenLabs only when you use voice input. OpenFit does not sell health data or share it with advertisers.
               </ThemedText>
             </View>
           </List.Accordion>
@@ -671,10 +207,6 @@ export default function HomeScreen() {
               onToggle={() => setShowDebug((v) => !v)}
               items={[
                 { label: 'API server', value: getApiBaseUrl() },
-                {
-                  label: 'OAuth client',
-                  value: config?.clientId ? 'Configured' : (configError ?? 'Loading'),
-                },
               ]}
             />
           )}
@@ -816,37 +348,7 @@ export default function HomeScreen() {
             onClose={() => setCardEditorOpen(false)}
           />
 
-          {/* ── Connection diagnostics (debug builds only) ── */}
-          {DEBUG_ENABLED && (
-            <DebugPanel
-              expanded={showDebug}
-              onToggle={() => setShowDebug((v) => !v)}
-              items={[
-                { label: 'Status', value: 'Connected' },
-                { label: 'API server', value: getApiBaseUrl() },
-                {
-                  label: 'Redirect URI',
-                  value: config?.redirectUri ?? 'Loading',
-                },
-                {
-                  label: 'Callback URI',
-                  value: config?.appReturnUri ?? GOOGLE_NATIVE_REDIRECT_URI,
-                },
-                {
-                  label: 'OAuth client',
-                  value: config?.clientId ? 'Configured' : (configError ?? 'Loading'),
-                },
-                {
-                  label: 'Client secret',
-                  value: config?.hasClientSecret ? 'Server only' : 'Missing',
-                },
-                {
-                  label: 'Range',
-                  value: snapshot?.rangeLabel ?? `Last ${rangeDays} days`,
-                },
-              ]}
-            />
-          )}
+          {DEBUG_ENABLED && <DebugPanel expanded={showDebug} onToggle={() => setShowDebug(v => !v)} items={[{ label: 'Health source', value: healthSourceName }, { label: 'Range', value: snapshot?.rangeLabel ?? '' }]} />}
         </View>
       </ScrollView>
     </View>
@@ -873,31 +375,6 @@ function SectionHeader({ title, trailing }: { title: string; trailing?: ReactNod
       <ThemedText type="subtitle">{title}</ThemedText>
       {trailing}
     </View>
-  );
-}
-
-const GOOGLE_SIGN_IN_ASSET = Platform.select({
-  ios: require('../../assets/images/google-signin-ios.png'),
-  default: require('../../assets/images/google-signin-android-web.png'),
-});
-
-function GoogleSignInButton({ onPress, disabled }: { onPress?: () => void; disabled?: boolean }) {
-  const size = Platform.OS === 'ios' ? { width: 188, height: 44 } : { width: 180, height: 40 };
-
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel="Sign in with Google"
-      disabled={disabled}
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.googleSignInButton,
-        disabled && styles.disabled,
-        pressed && !disabled && styles.pressed,
-      ]}
-    >
-      <Image accessible={false} contentFit="contain" source={GOOGLE_SIGN_IN_ASSET} style={size} />
-    </Pressable>
   );
 }
 
@@ -979,82 +456,7 @@ function ErrorBanner({ message }: { message: string }) {
 
 // ─── Helpers (unchanged logic) ─────────────────────────────────────────────────
 
-function decodeIdToken(
-  idToken: string
-): { name?: string; given_name?: string; email?: string } | null {
-  try {
-    const parts = idToken.split('.');
-    if (parts.length !== 3) {
-      return null;
-    }
-    const payload = parts[1];
-    const base64Url = payload.replace(/-/g, '+').replace(/_/g, '/');
-    let base64 = base64Url;
-    while (base64.length % 4) {
-      base64 += '=';
-    }
-
-    let decoded = '';
-    const atobFunc =
-      typeof atob === 'function'
-        ? atob
-        : typeof globalThis !== 'undefined' && typeof (globalThis as any).atob === 'function'
-          ? (globalThis as any).atob
-          : null;
-    if (atobFunc) {
-      decoded = atobFunc(base64);
-    } else {
-      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
-      const lookup = new Uint8Array(256);
-      for (let i = 0; i < chars.length; i++) {
-        lookup[chars.charCodeAt(i)] = i;
-      }
-      const bufferLength = base64.length * 0.75;
-      const len = base64.length;
-      let p = 0;
-      if (base64[len - 1] === '=') {
-        p++;
-        if (base64[len - 2] === '=') {
-          p++;
-        }
-      }
-      const bytes = new Uint8Array(bufferLength - p);
-      let coords = 0;
-      for (let i = 0; i < len; i += 4) {
-        const chunk =
-          (lookup[base64.charCodeAt(i)] << 18) |
-          (lookup[base64.charCodeAt(i + 1)] << 12) |
-          (lookup[base64.charCodeAt(i + 2)] << 6) |
-          lookup[base64.charCodeAt(i + 3)];
-
-        bytes[coords++] = (chunk >> 16) & 255;
-        if (coords < bytes.length) bytes[coords++] = (chunk >> 8) & 255;
-        if (coords < bytes.length) bytes[coords++] = chunk & 255;
-      }
-      for (let i = 0; i < bytes.length; i++) {
-        decoded += String.fromCharCode(bytes[i]);
-      }
-    }
-
-    const utf8String = decodeURIComponent(
-      decoded
-        .split('')
-        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-        .join('')
-    );
-    return JSON.parse(utf8String);
-  } catch (e) {
-    console.warn('Failed to decode ID token:', e);
-    return null;
-  }
-}
-
-// ─── Styles ────────────────────────────────────────────────────────────────────
-// Apple Health–style: grouped gray background, borderless rounded cards,
-// monochrome controls. Semantic color roles match the shared Material theme.
-
 const RADIUS = 28;
-
 const styles = StyleSheet.create({
   dashboardScreen: {
     flex: 1,

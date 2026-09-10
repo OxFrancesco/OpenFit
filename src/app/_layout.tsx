@@ -1,3 +1,4 @@
+import { clearStoredToken } from '@/lib/token-store';
 import { ClerkProvider, useUser } from '@clerk/expo';
 import { tokenCache } from '@clerk/expo/token-cache';
 import { Stack, router } from 'expo-router';
@@ -14,6 +15,8 @@ import { MaterialProvider } from '@/components/material-provider';
 import { MaterialNavigation, useMainDestination } from '@/components/material-navigation';
 import { useTheme } from '@/hooks/use-theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+
+void clearStoredToken().catch(() => undefined);
 
 export default function RootLayout() {
   const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY;

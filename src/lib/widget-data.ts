@@ -1,5 +1,5 @@
 import type { DashboardPrefs } from "@/lib/dashboard-prefs-core";
-import type { HealthMetric } from "@/lib/google-health";
+import type { HealthMetric } from "@/lib/health-data";
 import {
   DEFAULT_RING_IDS,
   METRIC_CATALOG,

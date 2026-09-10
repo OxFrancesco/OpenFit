@@ -1,3 +1,4 @@
+import { supportsHealthMetric } from '@/lib/supported-health-metrics';
 import { Button, Checkbox } from 'react-native-paper';
 import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
@@ -22,7 +23,7 @@ type EditorEntry = {
 };
 
 const ENTRIES: EditorEntry[] = [
-  ...METRIC_CATALOG.map((def) => ({
+  ...METRIC_CATALOG.filter(def => supportsHealthMetric(def.id)).map((def) => ({
     id: def.id,
     label: def.label,
     unit: def.unit,

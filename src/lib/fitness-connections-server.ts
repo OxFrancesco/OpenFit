@@ -1,7 +1,7 @@
 import {
   CoachApiError,
   healthAgentFetch,
-  requireGoogleSubject,
+  requireAccountSubject,
 } from '@/lib/coach-server';
 import type {
   ConnectableFitnessProviderId,
@@ -69,7 +69,7 @@ type CallbackCompletionBody = {
 
 export async function handleFitnessConnectionsGet(request: Request) {
   try {
-    const subject = await requireGoogleSubject(request);
+    const subject = await requireAccountSubject(request);
     const response = await healthAgentFetch(subject, '/fitness/connections');
     const data = await readAgentJson(response);
 
@@ -119,7 +119,7 @@ export async function handleFitnessOAuthStart(
   provider: ConnectableFitnessProviderId
 ) {
   try {
-    const subject = await requireGoogleSubject(request);
+    const subject = await requireAccountSubject(request);
     const body = await readJsonObject(request);
     const returnUri = typeof body.returnUri === 'string' ? body.returnUri : '';
     const linkChallenge =
@@ -166,7 +166,7 @@ export async function handleFitnessDisconnect(
   provider: ConnectableFitnessProviderId
 ) {
   try {
-    const subject = await requireGoogleSubject(request);
+    const subject = await requireAccountSubject(request);
     const forceLocal = new URL(request.url).searchParams.get('forceLocal') === 'true';
     const query = forceLocal ? '?forceLocal=true' : '';
     const response = await healthAgentFetch(subject, `/fitness/connections/${provider}${query}`, {
@@ -194,7 +194,7 @@ export async function handleFitnessOAuthFinalize(
   provider: ConnectableFitnessProviderId
 ) {
   try {
-    const subject = await requireGoogleSubject(request);
+    const subject = await requireAccountSubject(request);
     const body = await readJsonObject(request);
     const completionId =
       typeof body.completionId === 'string' ? body.completionId : '';

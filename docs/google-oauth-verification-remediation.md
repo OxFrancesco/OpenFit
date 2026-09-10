@@ -1,3 +1,5 @@
+> Superseded on 2026-09-10. Do not submit the Google Health or Apple export claims below. The current behavior and release checks are in `docs/device-health-migration.md`. Current legal copy is in `src/app/privacy.tsx` and `src/app/support.tsx`.
+
 # Google OAuth Verification Remediation Packet
 
 Use this packet only after the matching production build is deployed. Do not send the reply template or record the final video while any runtime, consent-screen, or Console scope differs from this contract.

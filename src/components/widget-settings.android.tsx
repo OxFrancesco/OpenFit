@@ -1,3 +1,4 @@
+import { supportsHealthMetric } from '@/lib/supported-health-metrics';
 import { useCallback, useEffect, useState } from "react";
 import {
   BackHandler,
@@ -167,7 +168,7 @@ export default function WidgetSettingsScreen() {
   const count = widgetMetricCount(info.widgetName);
   const previewWidth = Math.min(info.width, width - 64);
   const previewHeight = Math.min(info.height, 220);
-  const metrics = METRIC_CATALOG.filter((metric) =>
+  const metrics = METRIC_CATALOG.filter(metric => supportsHealthMetric(metric.id)).filter((metric) =>
     `${metric.label} ${metric.category}`
       .toLowerCase()
       .includes(search.toLowerCase()),

@@ -1,3 +1,4 @@
+import { supportsHealthMetric } from '@/lib/supported-health-metrics';
 import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { MetricIcon } from '@/components/metric-icon';
@@ -167,7 +168,7 @@ export function ActivityRings({
                 </View>
 
                 <ScrollView style={styles.options} showsVerticalScrollIndicator={false}>
-                  {RING_ELIGIBLE_METRICS.filter((def) => !usedElsewhere.has(def.id)).map((def) => {
+                  {RING_ELIGIBLE_METRICS.filter((def) => supportsHealthMetric(def.id) && !usedElsewhere.has(def.id)).map((def) => {
                     const selected = def.id === editing.metricId;
 
                     return (

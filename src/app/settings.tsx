@@ -1,194 +1,45 @@
 import { useUser, useAuth } from '@clerk/expo';
 import { Button, List } from 'react-native-paper';
-import { Stack, useRouter, useFocusEffect, type Href } from 'expo-router';
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { Stack, useRouter, type Href } from 'expo-router';
+import { useState, type ReactNode } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-
-import { LoadingDots } from '@/components/loading';
 import { ThemedText } from '@/components/themed-text';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { syncGoogleHealthToAppleHealth } from '@/lib/apple-health-sync';
 import { loadDashboardPrefs } from '@/lib/dashboard-prefs';
-import { defaultPrefs, type DashboardPrefs } from '@/lib/dashboard-prefs-core';
-import { ensureFreshToken } from '@/lib/google-auth';
-import { setCachedSnapshot } from '@/lib/health-cache';
-import { fetchGoogleHealthSnapshot, type GoogleTokenResponse } from '@/lib/google-health';
-import { loadStoredToken, saveStoredToken } from '@/lib/token-store';
+import { clearSnapshotCache, setCachedSnapshot } from '@/lib/health-cache';
+import { connectDeviceHealth, fetchHealthSnapshot, healthSourceName, openHealthSettings } from '@/lib/health-source';
+import { clearHealthSession } from '@/lib/clear-health-session';
 import { buildWidgetData, getWidgetMetricIds } from '@/lib/widget-data';
 import { syncWidgets } from '@/lib/widget-sync';
-
-type LoadState = 'idle' | 'loading' | 'loaded' | 'error';
-type DashboardRangeDays = 1 | 7 | 14 | 30 | 90;
-
-const RANGE_OPTIONS: { label: string; value: DashboardRangeDays }[] = [
-  { label: 'Today', value: 1 },
-  { label: '7D', value: 7 },
-  { label: '14D', value: 14 },
-  { label: '30D', value: 30 },
-  { label: '90D', value: 90 },
-];
 
 export default function SettingsScreen() {
   const theme = useTheme();
   const { user } = useUser();
   const router = useRouter();
-  const [prefs, setPrefs] = useState<DashboardPrefs>(defaultPrefs);
-  const { isLoaded: accountLoaded, userId } = useAuth();
-  const [token, setToken] = useState<GoogleTokenResponse | null>(null);
-  const [restoringSession, setRestoringSession] = useState(true);
-  const [accountSyncState, setAccountSyncState] = useState<LoadState>('idle');
-  const [accountMessage, setAccountMessage] = useState<string | null>(null);
-  const [rangeDays, setRangeDays] = useState<DashboardRangeDays>(1);
-  const [appleHealthSyncState, setAppleHealthSyncState] = useState<LoadState>('idle');
-  const [appleHealthSyncMessage, setAppleHealthSyncMessage] = useState<string | null>(null);
-
-  const prefsRef = useRef(prefs);
-  const tokenRef = useRef(token);
-
-  useEffect(() => {
-    prefsRef.current = prefs;
-  }, [prefs]);
-
-  useEffect(() => {
-    tokenRef.current = token;
-  }, [token]);
-
-  useEffect(() => {
-    let ignore = false;
-
-    loadDashboardPrefs()
-      .then((stored) => {
-        if (!ignore) {
-          setPrefs(stored);
-        }
-      })
-      .catch(() => undefined);
-
-    return () => {
-      ignore = true;
-    };
-  }, []);
-
-  useFocusEffect(
-    useCallback(() => {
-      if (!accountLoaded) return;
-      setToken(null);
-      if (!userId) {
-        setRestoringSession(false);
-        return;
-      }
-      let ignore = false;
-
-      async function restoreSession() {
-        try {
-          const stored = await loadStoredToken();
-
-          if (!stored || ignore) {
-            return;
-          }
-
-          const fresh = await ensureFreshToken(stored);
-
-          if (ignore) {
-            return;
-          }
-
-          if (fresh !== stored) {
-            await saveStoredToken(fresh).catch(() => undefined);
-          }
-
-          setToken(fresh);
-        } catch {
-          if (!ignore) {
-            setToken(null);
-          }
-        } finally {
-          if (!ignore) {
-            setRestoringSession(false);
-          }
-        }
-      }
-
-      restoreSession();
-
-      return () => {
-        ignore = true;
-      };
-    }, [accountLoaded, userId])
-  );
-
-  const syncGoogleData = useCallback(async () => {
-    const current = tokenRef.current;
-
-    if (!current) {
-      setAccountSyncState('error');
-      setAccountMessage('Sign in with Google from the dashboard first.');
-      return;
-    }
-
-    setAccountSyncState('loading');
-    setAccountMessage(null);
-
+  const { userId } = useAuth();
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  async function refresh() {
+    setBusy(true); setMessage(null);
     try {
-      const fresh = await ensureFreshToken(current);
-
-      if (fresh !== current) {
-        tokenRef.current = fresh;
-        setToken(fresh);
-        saveStoredToken(fresh).catch(() => undefined);
-      }
-
-      const healthSnapshot = await fetchGoogleHealthSnapshot(fresh.accessToken, {
-        days: 1,
-        metricIds: getWidgetMetricIds(prefsRef.current, {
-          includeConfigurable: Platform.OS === 'ios',
-        }),
-      });
-      setCachedSnapshot(1, healthSnapshot);
-      await syncWidgets(buildWidgetData(prefsRef.current, healthSnapshot.metrics));
-
-      setAccountSyncState('loaded');
-      setAccountMessage('Synced Google data and widgets.');
-    } catch (syncError) {
-      setAccountSyncState('error');
-      setAccountMessage(syncError instanceof Error ? syncError.message : String(syncError));
-    }
-  }, []);
-
-  const syncToAppleHealth = useCallback(async () => {
-    const current = tokenRef.current;
-
-    if (!current) {
-      setAppleHealthSyncState('error');
-      setAppleHealthSyncMessage('Sign in with Google from the dashboard first.');
-      return;
-    }
-
-    setAppleHealthSyncState('loading');
-    setAppleHealthSyncMessage(null);
-
-    try {
-      const fresh = await ensureFreshToken(current);
-
-      if (fresh !== current) {
-        tokenRef.current = fresh;
-        setToken(fresh);
-        saveStoredToken(fresh).catch(() => undefined);
-      }
-
-      const result = await syncGoogleHealthToAppleHealth(fresh.accessToken, {
-        days: rangeDays,
-      });
-
-      setAppleHealthSyncState(result.status === 'unsupported' ? 'idle' : 'loaded');
-      setAppleHealthSyncMessage(result.message);
-    } catch (syncError) {
-      setAppleHealthSyncState('error');
-      setAppleHealthSyncMessage(syncError instanceof Error ? syncError.message : String(syncError));
-    }
-  }, [rangeDays]);
+      await connectDeviceHealth();
+      clearSnapshotCache();
+      const prefs = await loadDashboardPrefs();
+      const snapshot = await fetchHealthSnapshot({ days: 1, metricIds: getWidgetMetricIds(prefs, { includeConfigurable: Platform.OS === 'ios' }) });
+      setCachedSnapshot(1, snapshot);
+      await syncWidgets(buildWidgetData(prefs, snapshot.metrics));
+      setMessage('Health data and widgets refreshed. If data is missing, check permissions and the records in your health app.');
+    } catch (cause) { setMessage(cause instanceof Error ? cause.message : String(cause)); }
+    finally { setBusy(false); }
+  }
+  async function disconnect() {
+    setBusy(true);
+    try { await clearHealthSession(); setMessage('Device health disconnected from OpenFit. You can also revoke permissions in your health app.'); }
+    catch (cause) { setMessage(String(cause)); }
+    finally { setBusy(false); }
+  }
 
   return (
     <>
@@ -222,104 +73,13 @@ export default function SettingsScreen() {
             }}
           />
 
-          <Section index={1}>
-            <SectionHeader
-              title="Google Health"
-              trailing={
-                accountSyncState === 'loading' || restoringSession ? (
-                  <LoadingDots color={theme.textSecondary} />
-                ) : (
-                  <TextButton
-                    label="Sync"
-                    color={theme.text}
-                    onPress={syncGoogleData}
-                    disabled={!token}
-                  />
-                )
-              }
-            />
-            <View style={[styles.accountCard, { backgroundColor: theme.card }]}>
-              <View style={styles.accountCopy}>
-                <ThemedText type="smallBold">Google account</ThemedText>
-                <ThemedText
-                  type="small"
-                  style={{
-                    color: accountSyncState === 'error' ? theme.error : theme.textSecondary,
-                  }}
-                >
-                  {accountMessage ?? (token ? 'Connected' : 'Not signed in')}
-                </ThemedText>
-              </View>
-              <TextButton
-                label="Manage account"
-                color={theme.textSecondary}
-                onPress={() => router.push('/account')}
-              />
-            </View>
-          </Section>
-
-          {Platform.OS === 'ios' && (
-            <Section index={3}>
-              <SectionHeader
-                title="Apple Health"
-                trailing={
-                  appleHealthSyncState === 'loading' || restoringSession ? (
-                    <LoadingDots color={theme.textSecondary} />
-                  ) : (
-                    <TextButton
-                      label="Export"
-                      color={theme.text}
-                      onPress={syncToAppleHealth}
-                      disabled={!token}
-                    />
-                  )
-                }
-              />
-              <View style={[styles.appleHealthCard, { backgroundColor: theme.card }]}>
-                <View style={[styles.segments, { backgroundColor: theme.backgroundSelected }]}>
-                  {RANGE_OPTIONS.map((option) => {
-                    const active = rangeDays === option.value;
-                    return (
-                      <Pressable
-                        key={option.value}
-                        disabled={appleHealthSyncState === 'loading'}
-                        onPress={() => setRangeDays(option.value)}
-                        style={({ pressed }) => [
-                          styles.segment,
-                          active && { backgroundColor: theme.primary },
-                          pressed && styles.pressed,
-                        ]}
-                      >
-                        <ThemedText
-                          type="smallBold"
-                          style={{
-                            color: active ? theme.onPrimary : theme.textSecondary,
-                          }}
-                        >
-                          {option.label}
-                        </ThemedText>
-                      </Pressable>
-                    );
-                  })}
-                </View>
-
-                <View style={styles.appleHealthCopy}>
-                  <ThemedText type="smallBold">Google to Apple Health</ThemedText>
-                  <ThemedText
-                    type="small"
-                    style={{
-                      color: appleHealthSyncState === 'error' ? theme.error : theme.textSecondary,
-                    }}
-                  >
-                    {appleHealthSyncMessage ??
-                      (token
-                        ? 'Weight, sleep, and workouts'
-                        : 'Sign in with Google from the dashboard first.')}
-                  </ThemedText>
-                </View>
-              </View>
-            </Section>
-          )}
+          {Platform.OS !== 'web' && <View style={{ gap: 16 }}>
+            <ThemedText type="subtitle">{healthSourceName}</ThemedText>
+            <Button mode="contained" loading={busy} disabled={busy || !userId} onPress={refresh}>Choose permissions and refresh</Button>
+            <Button mode="outlined" disabled={busy} onPress={() => void openHealthSettings()}>Manage health permissions</Button>
+            <Button disabled={busy} onPress={disconnect}>Disconnect device health</Button>
+            {message && <ThemedText type="small" accessibilityRole="alert">{message}</ThemedText>}
+          </View>}
 
           {__DEV__ && (
             <Section index={Platform.OS === 'ios' ? 4 : 3}>

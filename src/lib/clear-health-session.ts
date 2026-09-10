@@ -1,3 +1,4 @@
+import { disconnectDeviceHealth } from './health-source';
 import { clearStoredToken } from './token-store';
 import { clearSnapshotCache } from './health-cache';
 import { loadDashboardPrefs } from './dashboard-prefs';
@@ -6,6 +7,7 @@ import { syncWidgets } from './widget-sync';
 import { unregisterWidgetRefresh } from './background-refresh';
 
 export async function clearHealthSession() {
+  await disconnectDeviceHealth();
   clearSnapshotCache();
   await clearStoredToken();
   await syncWidgets(emptyWidgetData(await loadDashboardPrefs()));

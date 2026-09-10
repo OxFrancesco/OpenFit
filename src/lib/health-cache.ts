@@ -1,4 +1,4 @@
-import type { HealthSnapshot } from '@/lib/google-health';
+import type { HealthSnapshot } from '@/lib/health-data';
 
 /**
  * In-memory snapshot cache keyed by dashboard range (days).

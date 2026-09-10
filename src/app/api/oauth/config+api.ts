@@ -1,1 +1,2 @@
-export { GET, OPTIONS } from '@/app/api/google/config+api';
+import { retiredGoogleAccess } from '@/lib/retired-google-access';
+export const OPTIONS = retiredGoogleAccess;

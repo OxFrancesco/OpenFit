@@ -3,7 +3,7 @@ import { CardPager } from './card-pager';
 import { ThemedText } from './themed-text';
 import { MetricCardMinHeight, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import type { SleepSummary } from '@/lib/google-health';
+import type { SleepSummary } from '@/lib/health-data';
 
 export function SleepCard({ sessions }: { sessions: SleepSummary[] }) {
   const theme = useTheme();

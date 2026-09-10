@@ -1,4 +1,3 @@
-import { GOOGLE_HEALTH_SCOPES } from '../../shared/clerk-google';
 import { useGoogleLogin } from '@/hooks/use-google-login';
 import { clearHealthSession } from '@/lib/clear-health-session';
 import { useAuth, useClerk, useSignIn, useSignUp, useUser } from '@clerk/expo';
@@ -20,9 +19,6 @@ export default function AccountScreen() {
   const googleLogin = useGoogleLogin();
   const { isLoaded, isSignedIn } = useAuth();
   const { user } = useUser();
-  const googleAccount = user?.externalAccounts.find(account => account.provider === 'google');
-  const googleReady = googleAccount?.verification?.status === 'verified' &&
-    GOOGLE_HEALTH_SCOPES.every(scope => googleAccount.approvedScopes.split(/\s+/).includes(scope));
   const { signOut } = useClerk();
   const { signIn } = useSignIn();
   const { signUp } = useSignUp();
@@ -146,8 +142,8 @@ export default function AccountScreen() {
               >
                 Go to workouts
               </Button>
-              <Button mode="outlined" onPress={googleReady ? () => router.replace('/') : loginWithGoogle} loading={busy} disabled={busy}>
-                {googleReady ? 'Go to Health' : googleAccount ? 'Reconnect Google Health' : 'Connect Google Health'}
+              <Button mode="outlined" onPress={() => router.replace('/')} loading={busy} disabled={busy}>
+                Go to health
               </Button>
               <Button
                 mode="outlined"
