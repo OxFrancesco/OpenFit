@@ -101,7 +101,9 @@ export async function readDeviceHealth(ids: string[], start: Date, end: Date): P
     } catch (cause) { return { id, value: null, error: cause instanceof Error ? cause.message : 'Health Connect could not read this metric.' }; }
   }));
   const workouts = allowed.has('ExerciseSession') ? await allRecords('ExerciseSession', start, end) : [];
-  const sleeps = allowed.has('SleepSession') ? await allRecords('SleepSession', start, end) : [];
+  const sleepStart = new Date(Math.max(start.getTime() - 36 * 60 * 60 * 1000, end.getTime() - 30 * 24 * 60 * 60 * 1000));
+  const sleeps = allowed.has('SleepSession') ? await allRecords('SleepSession', sleepStart, end) : [];
+
   return { metrics, exercises: workouts.map(w => ({ id: w.metadata?.id ?? w.startTime, name: w.title || 'Workout',
     type: String(w.exerciseType), startTime: w.startTime, endTime: w.endTime,
     activeMinutes: intervalMinutes(w.startTime, w.endTime), caloriesKcal: null, distanceKm: null, steps: null })),

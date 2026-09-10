@@ -77,7 +77,7 @@ public final class DeviceHealthModule: Module {
         }
         do {
           let workouts = try await self.samples(HKObjectType.workoutType(), start, end).compactMap { $0 as? HKWorkout }
-          let sleep = try await self.samples(HKObjectType.categoryType(forIdentifier: .sleepAnalysis)!, start, end).compactMap { $0 as? HKCategorySample }
+          let sleep = try await self.samples(HKObjectType.categoryType(forIdentifier: .sleepAnalysis)!, start.addingTimeInterval(-36 * 60 * 60), end).compactMap { $0 as? HKCategorySample }
           let exercises: [[String: Any]] = workouts.map { w in [
             "id": w.uuid.uuidString, "name": w.metadata?[HKMetadataKeyWorkoutBrandName] as? String ?? "Workout",
             "type": String(w.workoutActivityType.rawValue), "startTime": formatter.string(from: w.startDate),
@@ -87,7 +87,7 @@ public final class DeviceHealthModule: Module {
           ] }
           // Merge overlapping asleep segments from multiple sources before grouping sessions.
           let asleepValues: Set<Int> = [1, 3, 4, 5]
-          let segments = sleep.filter { asleepValues.contains($0.value) }.map { (max(start, $0.startDate), min(end, $0.endDate)) }.filter { $0.1 > $0.0 }.sorted { $0.0 < $1.0 }
+          let segments = sleep.filter { asleepValues.contains($0.value) }.map { ($0.startDate, min(end, $0.endDate)) }.filter { $0.1 > $0.0 }.sorted { $0.0 < $1.0 }
           var merged: [(Date, Date)] = []
           for segment in segments {
             if let last = merged.last, segment.0 <= last.1 {
@@ -101,7 +101,7 @@ public final class DeviceHealthModule: Module {
               sessions[sessions.count - 1] = (last.0, segment.1, last.2 + minutes)
             } else { sessions.append((segment.0, segment.1, minutes)) }
           }
-          let sleeps: [[String: Any]] = sessions.reversed().map { session in [
+          let sleeps: [[String: Any]] = sessions.filter { $0.1 > start }.reversed().map { session in [
             "id": formatter.string(from: session.0), "kind": "sleep", "startTime": formatter.string(from: session.0),
             "endTime": formatter.string(from: session.1), "minutesAsleep": session.2, "minutesInSleepPeriod": session.1.timeIntervalSince(session.0) / 60
           ] }

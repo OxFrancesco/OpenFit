@@ -139,7 +139,7 @@ function CoachConversation() {
               <View style={[styles.thinkingBubble, { backgroundColor: theme.card }]}>
                 <LoadingDots color={theme.textSecondary} />
                 <ThemedText type="small" style={{ color: theme.textSecondary }}>
-                  {transcribing ? 'Transcribing voice note' : loading ? 'Connecting' : 'Looking at your data'}
+                  {transcribing ? 'Transcribing voice note' : loading ? 'Connecting' : 'Thinking'}
                 </ThemedText>
               </View>
             </Animated.View>

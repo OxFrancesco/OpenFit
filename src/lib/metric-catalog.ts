@@ -90,7 +90,7 @@ export const METRIC_CATALOG: MetricDef[] = [
   {
     id: 'active-energy-burned',
     label: 'Active calories',
-    shortLabel: 'Calories',
+    shortLabel: 'Active calories',
     unit: 'kcal',
     icon: 'flame.fill',
     glyph: '🔥',

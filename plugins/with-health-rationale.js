@@ -8,6 +8,7 @@ module.exports = function withHealthRationale(config) {
     ${marker}
     if (intent?.action == "androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE" ||
         intent?.action == "android.intent.action.VIEW_PERMISSION_USAGE") {
+      intent.action = android.content.Intent.ACTION_VIEW
       intent.data = android.net.Uri.parse("fitty://privacy")
     }
 `;
@@ -18,6 +19,7 @@ module.exports = function withHealthRationale(config) {
   override fun onNewIntent(intent: android.content.Intent) {
     if (intent.action == "androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE" ||
         intent.action == "android.intent.action.VIEW_PERMISSION_USAGE") {
+      intent.action = android.content.Intent.ACTION_VIEW
       intent.data = android.net.Uri.parse("fitty://privacy")
     }
     super.onNewIntent(intent)

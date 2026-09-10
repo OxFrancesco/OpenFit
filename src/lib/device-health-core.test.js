@@ -26,10 +26,14 @@ test('legacy Google routes cannot issue or refresh tokens', async () => {
   expect(await response.text()).toContain('retired');
 });
 
-test('overlapping Health Connect sleep sessions merge and clip to the requested range', () => {
+test('overnight sleep retains the full session and merges duplicate sources', () => {
   const stage = {startTime:'2026-09-09T23:00:00Z',endTime:'2026-09-10T02:00:00Z',stage:2};
   const sessions = mergeSleepSessions([{...stage,stages:[stage]}, {...stage,stages:[stage]}], new Date('2026-09-10T00:00:00Z'),new Date('2026-09-10T01:00:00Z'));
   expect(sessions).toHaveLength(1);
-  expect(sessions[0].minutesAsleep).toBe(60);
-  expect(sessions[0].minutesInSleepPeriod).toBe(60);
+  expect(sessions[0].minutesAsleep).toBe(120);
+  expect(sessions[0].minutesInSleepPeriod).toBe(120);
+});
+
+test('sleep that ended before today stays out of the today view', () => {
+  expect(mergeSleepSessions([{startTime:'2026-09-09T00:00:00Z',endTime:'2026-09-09T08:00:00Z'}], new Date('2026-09-10T00:00:00Z'),new Date('2026-09-10T12:00:00Z'))).toEqual([]);
 });

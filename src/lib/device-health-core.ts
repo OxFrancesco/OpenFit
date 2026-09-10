@@ -48,8 +48,8 @@ export function unionMinutes(intervals: { startTime: string; endTime: string }[]
 }
 
 export function mergeSleepSessions(records: { startTime: string; endTime: string; stages?: { startTime: string; endTime: string; stage: number }[] }[], start: Date, end: Date): HealthSnapshot['sleepSessions'] {
-  const sessions = records.map(record => ({ record, start: Math.max(start.getTime(), Date.parse(record.startTime)), end: Math.min(end.getTime(), Date.parse(record.endTime)) }))
-    .filter(x => Number.isFinite(x.start) && Number.isFinite(x.end) && x.end > x.start).sort((a,b) => a.start - b.start);
+  const sessions = records.map(record => ({ record, start: Date.parse(record.startTime), end: Math.min(end.getTime(), Date.parse(record.endTime)) }))
+    .filter(x => Number.isFinite(x.start) && Number.isFinite(x.end) && x.end > x.start && x.end > start.getTime()).sort((a,b) => a.start - b.start);
   const groups: { start: number; end: number; stages: {startTime: string; endTime: string}[]; staged: boolean }[] = [];
   for (const session of sessions) {
     const stages = (session.record.stages ?? []).filter(stage => [2,4,5,6].includes(stage.stage)).flatMap(stage => {
