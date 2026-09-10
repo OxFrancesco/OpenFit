@@ -548,10 +548,6 @@ export default function HomeScreen() {
       const missing = widgetIds.filter((id) => !metrics.some((metric) => metric.id === id));
 
       if (missing.length) {
-        if (rangeDays === 1) {
-          return;
-        }
-
         try {
           const fresh = await ensureFreshToken(token);
           const result = await fetchHealthMetrics(fresh.accessToken, missing, 1);

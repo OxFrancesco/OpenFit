@@ -1,6 +1,11 @@
-import type { DashboardPrefs } from '@/lib/dashboard-prefs-core';
-import type { HealthMetric } from '@/lib/google-health';
-import { DEFAULT_RING_IDS, METRIC_CATALOG, getDefaultGoal, getMetricDef } from '@/lib/metric-catalog';
+import type { DashboardPrefs } from "@/lib/dashboard-prefs-core";
+import type { HealthMetric } from "@/lib/google-health";
+import {
+  DEFAULT_RING_IDS,
+  METRIC_CATALOG,
+  getDefaultGoal,
+  getMetricDef,
+} from "@/lib/metric-catalog";
 
 /**
  * Serializable snapshot of the three ring slots, rendered by the home-screen
@@ -9,12 +14,15 @@ import { DEFAULT_RING_IDS, METRIC_CATALOG, getDefaultGoal, getMetricDef } from '
  */
 
 /** Outer / middle / inner slot colors — mirrors SLOT_COLORS in activity-rings.tsx. */
-export const WIDGET_SLOT_COLORS = ['#007AFF', '#FF3B30', '#34C759'] as const;
+export const WIDGET_SLOT_COLORS = ["#007AFF", "#FF3B30", "#34C759"] as const;
 export const MODULAR_WIDGET_METRIC_IDS = [...DEFAULT_RING_IDS] as const;
-export const WIDGET_CONFIGURABLE_METRIC_IDS = METRIC_CATALOG.map((def) => def.id);
+export const WIDGET_CONFIGURABLE_METRIC_IDS = METRIC_CATALOG.map(
+  (def) => def.id,
+);
 
 export type WidgetSlot = {
   id: string;
+  status?: HealthMetric["status"] | "unrequested";
   label: string;
   /** Numeric value for storage; 0 when display is '--'. */
   value: number;
@@ -39,16 +47,21 @@ export type WidgetData = {
 
 function formatValue(value: number | null, fractionDigits: number) {
   if (value === null) {
-    return '--';
+    return "--";
   }
 
-  return value.toLocaleString(undefined, { maximumFractionDigits: fractionDigits });
+  return value.toLocaleString(undefined, {
+    maximumFractionDigits: fractionDigits,
+  });
 }
 
-export function buildWidgetData(prefs: DashboardPrefs, metrics: HealthMetric[]): WidgetData {
+export function buildWidgetData(
+  prefs: DashboardPrefs,
+  metrics: HealthMetric[],
+): WidgetData {
   const byId = new Map(metrics.map((metric) => [metric.id, metric]));
   const colorById = new Map<string, `#${string}`>(
-    MODULAR_WIDGET_METRIC_IDS.map((id, i) => [id, WIDGET_SLOT_COLORS[i]])
+    MODULAR_WIDGET_METRIC_IDS.map((id, i) => [id, WIDGET_SLOT_COLORS[i]]),
   );
 
   prefs.widgetMetrics.forEach((id, i) => {
@@ -62,21 +75,25 @@ export function buildWidgetData(prefs: DashboardPrefs, metrics: HealthMetric[]):
 
     return {
       id,
+      status: byId.get(id)?.status ?? "unrequested",
       label: def?.shortLabel ?? def?.label ?? id,
       value: value ?? 0,
       display: formatValue(value, def?.fractionDigits ?? 0),
-      unit: def?.unit ?? '',
+      unit: def?.unit ?? "",
       goal,
-      progress: value !== null && goal > 0 ? Math.min(1, Math.max(0, value / goal)) : 0,
+      progress:
+        value !== null && goal > 0 ? Math.min(1, Math.max(0, value / goal)) : 0,
       color,
     };
   };
 
-  const slots = prefs.widgetMetrics.map((id, i) => createSlot(id, WIDGET_SLOT_COLORS[i]));
+  const slots = prefs.widgetMetrics.map((id, i) =>
+    createSlot(id, WIDGET_SLOT_COLORS[i]),
+  );
   const metricsById: Record<string, WidgetSlot> = {};
 
   for (const id of getWidgetMetricIds(prefs, { includeConfigurable: true })) {
-    metricsById[id] = createSlot(id, colorById.get(id) ?? '#8E8E93');
+    metricsById[id] = createSlot(id, colorById.get(id) ?? "#8E8E93");
   }
 
   return { slots, metricsById, updatedAt: Date.now() };
@@ -84,12 +101,51 @@ export function buildWidgetData(prefs: DashboardPrefs, metrics: HealthMetric[]):
 
 /** Blank slots for the signed-out / never-synced states. */
 export function emptyWidgetData(prefs: DashboardPrefs): WidgetData {
-  return buildWidgetData(prefs, []);
+  return buildWidgetData(
+    prefs,
+    METRIC_CATALOG.map((def) => ({
+      id: def.id,
+      label: def.label,
+      unit: def.unit,
+      value: null,
+      status: "empty",
+    })),
+  );
+}
+
+export function mergeWidgetData(
+  previous: WidgetData | null,
+  incoming: WidgetData,
+): WidgetData {
+  const mergeSlot = (slot: WidgetSlot): WidgetSlot => {
+    const saved =
+      previous?.metricsById?.[slot.id] ??
+      previous?.slots.find((value) => value.id === slot.id);
+    if (!saved || (slot.status !== "error" && slot.status !== "unrequested"))
+      return slot;
+    return {
+      ...saved,
+      color: slot.color,
+      goal: slot.goal,
+      progress:
+        slot.goal > 0 ? Math.min(1, Math.max(0, saved.value / slot.goal)) : 0,
+    };
+  };
+  return {
+    ...incoming,
+    slots: incoming.slots.map(mergeSlot),
+    metricsById: Object.fromEntries(
+      Object.entries(incoming.metricsById).map(([id, slot]) => [
+        id,
+        mergeSlot(slot),
+      ]),
+    ),
+  };
 }
 
 export function getWidgetMetricIds(
   prefs: DashboardPrefs,
-  options: { includeConfigurable?: boolean } = {}
+  options: { includeConfigurable?: boolean } = {},
 ): string[] {
   const baseIds = options.includeConfigurable
     ? WIDGET_CONFIGURABLE_METRIC_IDS

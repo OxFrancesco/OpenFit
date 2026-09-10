@@ -5,7 +5,7 @@ import {
   OverlapWidget,
   SvgWidget,
 } from "react-native-android-widget";
-import { normalizeSlots } from "./shared";
+import { normalizeSlots, widgetSummary } from "./shared";
 import { heartRingsSvg } from "./ring-svg";
 import { WidgetEditButton } from "./widget-controls";
 import { MetricValue, WidgetFrame, type WidgetProps } from "./widget-layout";
@@ -13,13 +13,15 @@ import { widgetPalette } from "./widget-appearance";
 
 export function RingValuesWidget({
   data,
+  widgetId,
+  textTone,
   width = 220,
   height = 220,
   background,
 }: WidgetProps) {
   "use no memo";
   const slots = normalizeSlots(data);
-  const palette = widgetPalette(background);
+  const palette = widgetPalette(background, textTone);
   const horizontal = width > height * 1.4;
   const heartSize = Math.max(
     48,
@@ -29,7 +31,10 @@ export function RingValuesWidget({
     ),
   );
   return (
-    <WidgetFrame background={background}>
+    <WidgetFrame
+      background={background}
+      accessibilityLabel={widgetSummary(slots)}
+    >
       <OverlapWidget style={{ width: "match_parent", height: "match_parent" }}>
         <FlexWidget
           style={{
@@ -78,6 +83,7 @@ export function RingValuesWidget({
                 }}
               >
                 <MetricValue
+                  textShadow={palette.textShadow}
                   slot={slot}
                   secondary={palette.secondary}
                   compact={!horizontal && width < 270}
@@ -92,7 +98,11 @@ export function RingValuesWidget({
           </FlexWidget>
         </FlexWidget>
         <FlexWidget style={{ width: "match_parent", alignItems: "flex-end" }}>
-          <WidgetEditButton compact />
+          <WidgetEditButton
+            widgetId={widgetId}
+            background={background}
+            textTone={textTone}
+          />
         </FlexWidget>
       </OverlapWidget>
     </WidgetFrame>

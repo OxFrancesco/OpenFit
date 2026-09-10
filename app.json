@@ -28,6 +28,7 @@
     },
     "android": {
       "package": "com.francescooddo.fitty",
+      "versionCode": 4,
       "adaptiveIcon": {
         "backgroundColor": "#FFFFFF",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -462,8 +463,8 @@
               "name": "OneValue",
               "label": "1:1 Tracker",
               "description": "One main tracker at a glance",
-              "minWidth": "80dp",
-              "minHeight": "80dp",
+              "minWidth": "40dp",
+              "minHeight": "40dp",
               "targetCellWidth": 1,
               "targetCellHeight": 1,
               "updatePeriodMillis": 1800000,
@@ -520,7 +521,8 @@
       "expo-audio",
       "expo-asset",
       "expo-sqlite",
-      "@clerk/expo"
+      "@clerk/expo",
+      "./plugins/with-widget-bundle-inputs"
     ],
     "experiments": {
       "typedRoutes": true,

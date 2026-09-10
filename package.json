@@ -61,7 +61,8 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "lint": "expo lint",
-    "test": "bun test ./src/ ./workers/"
+    "test": "bun test ./src/ ./workers/",
+    "verify:android-widget-bundle": "bun scripts/verify-android-widget-bundle.js"
   },
   "private": true,
   "trustedDependencies": [

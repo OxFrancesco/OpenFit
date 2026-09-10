@@ -1,5 +1,7 @@
 import {
   normalizeWidgetBackground,
+  widgetPalette,
+  type WidgetTextTone,
   type WidgetBackground,
 } from "./widget-appearance";
 import * as SecureStore from "expo-secure-store";
@@ -12,7 +14,7 @@ import type { WidgetData } from "@/lib/widget-data";
 
 export type WidgetPreferences = {
   metrics: string[];
-  editing: boolean;
+  textTone?: WidgetTextTone;
   background?: WidgetBackground;
 };
 const key = (id: number) => `fitty.widget.${id}`;
@@ -32,14 +34,14 @@ export async function loadWidgetPreferences(
     ) {
       return {
         metrics: value.metrics,
-        editing: value.editing === true,
+        textTone: value.textTone === "light" ? "light" : "dark",
         background: normalizeWidgetBackground(value.background),
       };
     }
   } catch {}
   return {
     metrics: [...DEFAULT_RING_IDS],
-    editing: false,
+    textTone: "dark",
     background: "forest",
   };
 }
@@ -58,13 +60,14 @@ export async function deleteWidgetPreferences(id: number) {
 export function configureWidgetData(
   data: WidgetData | null,
   prefs: WidgetPreferences,
-): WidgetData | null {
-  if (!data) return null;
+): WidgetData {
+  const palette = widgetPalette(prefs.background, prefs.textTone);
   return {
-    ...data,
+    metricsById: data?.metricsById ?? {},
+    updatedAt: data?.updatedAt ?? 0,
     slots: prefs.metrics.map((id, index) => ({
-      ...(data.metricsById?.[id] ??
-        data.slots.find((slot) => slot.id === id) ?? {
+      ...(data?.metricsById?.[id] ??
+        data?.slots.find((slot) => slot.id === id) ?? {
           id,
           label: getMetricDef(id)?.shortLabel ?? getMetricDef(id)?.label ?? id,
           value: 0,
@@ -73,12 +76,7 @@ export function configureWidgetData(
           goal: getDefaultGoal(id),
           progress: 0,
         }),
-      color:
-        prefs.background === "light"
-          ? (["#005CC5", "#B52B26", "#177D3A"] as const)[index]
-          : prefs.background === "transparent"
-            ? (["#74B9FF", "#FF9088", "#90E6AD"] as const)[index]
-            : (["#77BAFF", "#FF8D86", "#8FDFAB"] as const)[index],
+      color: palette.slotColors[index % palette.slotColors.length],
     })),
   };
 }

@@ -2,22 +2,27 @@
 import { widgetPalette } from "./widget-appearance";
 
 import { FlexWidget, OverlapWidget } from "react-native-android-widget";
-import { normalizeSlots } from "./shared";
+import { normalizeSlots, widgetSummary } from "./shared";
 import { WidgetEditButton } from "./widget-controls";
 import { MetricValue, WidgetFrame, type WidgetProps } from "./widget-layout";
 
 export function TwoValuesWidget({
   data,
+  widgetId,
+  textTone,
   background,
   width = 180,
   height = 180,
 }: WidgetProps) {
   "use no memo";
-  const palette = widgetPalette(background);
+  const palette = widgetPalette(background, textTone);
   const slots = normalizeSlots(data).slice(0, 2);
   const horizontal = width > height * 1.6;
   return (
-    <WidgetFrame background={background}>
+    <WidgetFrame
+      background={background}
+      accessibilityLabel={widgetSummary(slots)}
+    >
       <OverlapWidget style={{ width: "match_parent", height: "match_parent" }}>
         <FlexWidget
           style={{
@@ -50,6 +55,7 @@ export function TwoValuesWidget({
               }}
             >
               <MetricValue
+                textShadow={palette.textShadow}
                 compact={height < 180}
                 secondary={palette.secondary}
                 slot={slot}
@@ -63,7 +69,11 @@ export function TwoValuesWidget({
           ))}
         </FlexWidget>
         <FlexWidget style={{ width: "match_parent", alignItems: "flex-end" }}>
-          <WidgetEditButton compact />
+          <WidgetEditButton
+            widgetId={widgetId}
+            background={background}
+            textTone={textTone}
+          />
         </FlexWidget>
       </OverlapWidget>
     </WidgetFrame>

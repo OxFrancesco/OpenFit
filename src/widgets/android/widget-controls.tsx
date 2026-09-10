@@ -1,168 +1,41 @@
 "use no memo";
 
-import { FlexWidget, SvgWidget, TextWidget } from "react-native-android-widget";
-import { getMetricDef } from "@/lib/metric-catalog";
-import type { WidgetPreferences } from "./widget-preferences";
-import { normalizeWidgetBackground } from "./widget-appearance";
-import { CARD_BACKGROUND } from "./shared";
+import { FlexWidget, SvgWidget } from "react-native-android-widget";
+import {
+  widgetPalette,
+  type WidgetBackground,
+  type WidgetTextTone,
+} from "./widget-appearance";
 
-export function WidgetEditButton({ compact = false }: { compact?: boolean }) {
-  "use no memo";
-  return (
-    <SvgWidget
-      svg='<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="m15 5 4 4M5 19l4-1 11-11a2.8 2.8 0 0 0-4-4L5 14z" fill="none" stroke="#ABB9AF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>'
-      clickAction="EDIT"
-      accessibilityLabel="Customize this widget"
-      style={{
-        width: compact ? 22 : 28,
-        height: compact ? 22 : 28,
-        padding: compact ? 4 : 6,
-      }}
-    />
-  );
-}
-
-export function WidgetControls({
-  prefs,
-  count,
-  height = 180,
+export function WidgetEditButton({
+  widgetId,
+  background,
+  textTone,
+  compact = false,
 }: {
-  prefs: WidgetPreferences;
-  count: number;
-  height?: number;
+  widgetId?: number;
+  background?: WidgetBackground;
+  textTone?: WidgetTextTone;
+  compact?: boolean;
 }) {
   "use no memo";
-  const small = count === 1;
-  const large = height >= 240;
-  const background = normalizeWidgetBackground(prefs.background);
-  const backgroundLabel = {
-    forest: "Forest",
-    black: "Black",
-    light: "Light",
-    tinted: "Tinted",
-    transparent: "Transparent",
-  }[background];
+  const color = widgetPalette(background, textTone).secondary;
   return (
     <FlexWidget
+      clickAction="OPEN_URI"
+      clickActionData={{ uri: `fitty://widget-settings?id=${widgetId ?? ""}` }}
+      accessibilityLabel="Customize this widget"
       style={{
-        width: "match_parent",
-        height: "match_parent",
-        backgroundColor: "#00000000",
+        width: 48,
+        height: 48,
+        justifyContent: compact ? "flex-start" : "center",
+        alignItems: compact ? "flex-end" : "center",
       }}
     >
-      <FlexWidget
-        style={{
-          width: "match_parent",
-          height: "wrap_content",
-          backgroundColor: CARD_BACKGROUND,
-          borderRadius: 24,
-          padding: small ? 5 : large ? 10 : 8,
-          flexDirection: "column",
-          justifyContent: "flex-start",
-        }}
-      >
-        {prefs.metrics.slice(0, count).map((id, slot) => (
-          <FlexWidget
-            key={slot}
-            style={{
-              width: "match_parent",
-              height: small ? 27 : large ? 34 : 30,
-              flexDirection: "row",
-              alignItems: "center",
-              backgroundColor: "#26322B",
-              borderRadius: small ? 8 : 12,
-              marginBottom: small ? 2 : large ? 6 : 4,
-            }}
-          >
-            <TextWidget
-              text="‹"
-              clickAction="CHOOSE"
-              clickActionData={{ slot, direction: -1 }}
-              accessibilityLabel={`Previous metric for value ${slot + 1}`}
-              style={{
-                width: small ? 16 : 36,
-                fontSize: small ? 20 : 25,
-                color: "#EAF3EB",
-                textAlign: "center",
-              }}
-            />
-            <FlexWidget style={{ flex: 1 }}>
-              <TextWidget
-                text={
-                  getMetricDef(id)?.shortLabel ?? getMetricDef(id)?.label ?? id
-                }
-                maxLines={1}
-                style={{
-                  width: "match_parent",
-                  fontSize: small ? 10 : 13,
-                  color: "#EAF3EB",
-                  textAlign: "center",
-                  adjustsFontSizeToFit: true,
-                }}
-              />
-            </FlexWidget>
-            <TextWidget
-              text="›"
-              clickAction="CHOOSE"
-              clickActionData={{ slot, direction: 1 }}
-              accessibilityLabel={`Next metric for value ${slot + 1}`}
-              style={{
-                width: small ? 16 : 36,
-                fontSize: small ? 20 : 25,
-                color: "#EAF3EB",
-                textAlign: "center",
-              }}
-            />
-          </FlexWidget>
-        ))}
-        <FlexWidget
-          clickAction="BACKGROUND"
-          accessibilityLabel={`Background: ${backgroundLabel}. Tap for next background.`}
-          style={{
-            width: "match_parent",
-            height: small ? 18 : large ? 34 : 30,
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-            paddingHorizontal: small ? 2 : 10,
-            backgroundColor: "#26322B",
-            borderRadius: small ? 6 : 10,
-            marginBottom: small ? 2 : large ? 6 : 4,
-          }}
-        >
-          {!small ? (
-            <TextWidget
-              text="Background"
-              style={{ fontSize: 12, color: "#B2C3B6" }}
-            />
-          ) : null}
-          <TextWidget
-            text={`${backgroundLabel} ›`}
-            maxLines={1}
-            style={{
-              fontSize: small ? 9 : 12,
-              color: "#EAF3EB",
-              adjustsFontSizeToFit: true,
-            }}
-          />
-        </FlexWidget>
-        <TextWidget
-          text="Done"
-          clickAction="DONE"
-          accessibilityLabel="Save widget appearance"
-          style={{
-            width: "match_parent",
-            height: small ? 18 : large ? 34 : 30,
-            fontSize: small ? 10 : 13,
-            fontWeight: "bold",
-            color: "#173321",
-            backgroundColor: "#B7E7C5",
-            borderRadius: small ? 6 : 10,
-            textAlign: "center",
-            paddingTop: small ? 1 : large ? 8 : 6,
-          }}
-        />
-      </FlexWidget>
+      <SvgWidget
+        svg={`<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="m15 5 4 4M5 19l4-1 11-11a2.8 2.8 0 0 0-4-4L5 14z" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`}
+        style={{ width: compact ? 14 : 20, height: compact ? 14 : 20 }}
+      />
     </FlexWidget>
   );
 }
