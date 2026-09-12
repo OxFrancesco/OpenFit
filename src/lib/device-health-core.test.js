@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { deviceSnapshot, healthWindow, unionMinutes, mergeSleepSessions } from './device-health-core';
+import { deviceSnapshot, dedupeExercises, healthWindow, unionMinutes, mergeSleepSessions } from './device-health-core';
 import { accountStorageId } from '../../shared/account-identity';
 import { retiredGoogleAccess } from './retired-google-access';
 
@@ -32,6 +32,17 @@ test('overnight sleep retains the full session and merges duplicate sources', ()
   expect(sessions).toHaveLength(1);
   expect(sessions[0].minutesAsleep).toBe(120);
   expect(sessions[0].minutesInSleepPeriod).toBe(120);
+});
+
+test('the same workout written by two apps shows once, keeping the richer record', () => {
+  const walk = { type: '79', startTime: '2026-09-11T00:24:00Z', endTime: '2026-09-11T00:54:00Z', activeMinutes: 30, steps: null };
+  const result = dedupeExercises([
+    { ...walk, id: 'a', name: 'Walking', caloriesKcal: null, distanceKm: 2.07 },
+    { ...walk, id: 'b', name: 'Walking', startTime: '2026-09-11T00:24:20Z', caloriesKcal: 140, distanceKm: 2.07 },
+    { ...walk, id: 'c', name: 'Walking', type: '56', caloriesKcal: null, distanceKm: null },
+    { ...walk, id: 'd', name: 'Walking', startTime: '2026-09-11T06:00:00Z', endTime: '2026-09-11T06:30:00Z', caloriesKcal: null, distanceKm: null },
+  ]);
+  expect(result.map(e => e.id)).toEqual(['b', 'c', 'd']);
 });
 
 test('sleep that ended before today stays out of the today view', () => {

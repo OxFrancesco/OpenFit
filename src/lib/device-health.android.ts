@@ -1,9 +1,10 @@
 import {
-  aggregateGroupByPeriod, getGrantedPermissions, getSdkStatus, initialize, openHealthConnectSettings,
+  aggregateGroupByPeriod, aggregateRecord, getGrantedPermissions, getSdkStatus, initialize, openHealthConnectSettings,
   readRecords, requestPermission, SdkAvailabilityStatus,
-  type AggregateResultRecordType, type Permission, type RecordType, type RecordResult,
+  type AggregateResultRecordType, type BackgroundAccessPermission, type Permission, type RecordType, type RecordResult,
 } from 'react-native-health-connect';
 import { getMetricDef } from './metric-catalog';
+import { exerciseTypeName } from './health-connect-exercise-names';
 import { localDate, intervalMinutes, mergeSleepSessions, type DeviceHealthResult, type DeviceMetric } from './device-health-core';
 
 export const healthSourceName = 'Health Connect';
@@ -34,6 +35,8 @@ const samples: Record<string, { type: RecordType; path: string[] }> = {
 const permissions: Permission[] = [...new Set<RecordType>([
   ...Object.values(aggregates).map(x => x.type), ...Object.values(samples).map(x => x.type), 'SleepSession', 'ExerciseSession',
 ])].map(recordType => ({ accessType: 'read', recordType }));
+// Lets the headless widget task read Health Connect when OpenFit is not on screen.
+const backgroundAccess: BackgroundAccessPermission = { accessType: 'read', recordType: 'BackgroundAccessPermission' };
 async function ready() {
   const status = await getSdkStatus();
   if (status !== SdkAvailabilityStatus.SDK_AVAILABLE || !await initialize()) {
@@ -42,10 +45,14 @@ async function ready() {
 }
 export async function requestDeviceHealth() {
   await ready();
-  const granted = await requestPermission(permissions);
+  const granted = await requestPermission([...permissions, backgroundAccess]);
   if (!granted.some(p => p.accessType === 'read' && permissions.some(w => w.recordType === p.recordType))) {
     throw new Error('No health permissions were granted. Choose the data you want OpenFit to read.');
   }
+}
+export async function canReadDeviceHealthInBackground() {
+  await ready();
+  return (await getGrantedPermissions()).some(p => p.accessType === 'read' && p.recordType === backgroundAccess.recordType);
 }
 export async function openHealthSettings() { openHealthConnectSettings(); }
 function numberAt(value: unknown, path: string[]) {
@@ -103,9 +110,21 @@ export async function readDeviceHealth(ids: string[], start: Date, end: Date): P
   const workouts = allowed.has('ExerciseSession') ? await allRecords('ExerciseSession', start, end) : [];
   const sleepStart = new Date(Math.max(start.getTime() - 36 * 60 * 60 * 1000, end.getTime() - 30 * 24 * 60 * 60 * 1000));
   const sleeps = allowed.has('SleepSession') ? await allRecords('SleepSession', sleepStart, end) : [];
-
-  return { metrics, exercises: workouts.map(w => ({ id: w.metadata?.id ?? w.startTime, name: w.title || 'Workout',
+  // Health Connect stores calories and distance as separate records, so total them over each session.
+  const sessionTotal = async (type: 'ActiveCaloriesBurned' | 'Distance', path: string[], w: { startTime: string; endTime: string }) => {
+    if (!allowed.has(type)) return null;
+    try {
+      const result = await aggregateRecord({ recordType: type, timeRangeFilter: { operator: 'between', startTime: w.startTime, endTime: w.endTime } });
+      return result.dataOrigins?.length ? numberAt(result, path) : null;
+    } catch { return null; }
+  };
+  const exercises = await Promise.all(workouts.sort((a, b) => b.startTime.localeCompare(a.startTime)).map(async w => ({
+    id: w.metadata?.id ?? w.startTime, name: w.title || exerciseTypeName(w.exerciseType),
     type: String(w.exerciseType), startTime: w.startTime, endTime: w.endTime,
-    activeMinutes: intervalMinutes(w.startTime, w.endTime), caloriesKcal: null, distanceKm: null, steps: null })),
-    sleepSessions: mergeSleepSessions(sleeps, start, end) };
+    activeMinutes: intervalMinutes(w.startTime, w.endTime),
+    caloriesKcal: await sessionTotal('ActiveCaloriesBurned', ['ACTIVE_CALORIES_TOTAL', 'inKilocalories'], w),
+    distanceKm: await sessionTotal('Distance', ['DISTANCE', 'inKilometers'], w), steps: null,
+  })));
+
+  return { metrics, exercises, sleepSessions: mergeSleepSessions(sleeps, start, end) };
 }

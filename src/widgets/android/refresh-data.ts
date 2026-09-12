@@ -1,13 +1,13 @@
 import { AppState } from 'react-native';
-import { fetchHealthMetrics, isHealthEnabled } from "@/lib/health-source";
+import { canReadDeviceHealthInBackground, fetchHealthMetrics, isHealthEnabled } from "@/lib/health-source";
 import { loadDashboardPrefs } from "@/lib/dashboard-prefs";
 import { buildWidgetData, emptyWidgetData, type WidgetData } from "@/lib/widget-data";
 import { loadLastWidgetData, saveLastWidgetData } from "@/lib/widget-store";
 export async function refreshWidgetMetrics(ids: string[]): Promise<WidgetData | null> {
-  // Health Connect background reading needs a separate permission. Keep the last foreground snapshot.
-  if (AppState.currentState !== 'active') return loadLastWidgetData();
   const prefs = await loadDashboardPrefs();
   if (!await isHealthEnabled()) return saveLastWidgetData(emptyWidgetData(prefs));
+  // Without the Health Connect background grant, headless renders keep the last foreground snapshot.
+  if (AppState.currentState !== 'active' && !await canReadDeviceHealthInBackground().catch(() => false)) return loadLastWidgetData();
   if (!ids.length) return loadLastWidgetData();
   const { metrics } = await fetchHealthMetrics([...new Set(ids)], 1);
   if (!await isHealthEnabled()) return null;

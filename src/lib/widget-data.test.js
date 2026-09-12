@@ -3,6 +3,7 @@ import { defaultPrefs } from "./dashboard-prefs-core";
 import {
   buildWidgetData,
   emptyWidgetData,
+  expireStaleWidgetData,
   mergeWidgetData,
 } from "./widget-data";
 
@@ -42,6 +43,44 @@ test("a successful empty response clears a previous value", () => {
     buildWidgetData(prefs, [{ id: "steps", value: null, status: "empty" }]),
   );
   expect(result.slots[0].display).toBe("--");
+});
+
+/** Pretend `data` was read at `time` instead of now. */
+function readAt(data, time) {
+  const stamp = (slot) => (slot.fetchedAt ? { ...slot, fetchedAt: time } : slot);
+  return {
+    ...data,
+    updatedAt: time,
+    slots: data.slots.map(stamp),
+    metricsById: Object.fromEntries(Object.entries(data.metricsById).map(([id, slot]) => [id, stamp(slot)])),
+  };
+}
+
+test("yesterday's totals do not pose as today's after local midnight", () => {
+  const yesterday = new Date(2026, 8, 11, 22, 30);
+  const today = new Date(2026, 8, 12, 0, 5);
+  const data = readAt(
+    buildWidgetData(prefs, [loaded("steps", 12_340), loaded("weight", 71.2)]),
+    yesterday.getTime(),
+  );
+  expect(expireStaleWidgetData(data, yesterday).slots[0].display).toBe("12,340");
+  const expired = expireStaleWidgetData(data, today);
+  expect(expired.slots[0]).toMatchObject({ display: "--", value: 0, progress: 0 });
+  expect(expired.metricsById.steps.display).toBe("--");
+  expect(expired.metricsById.weight.display).toBe("71.2");
+});
+
+test("a metric refreshed today survives expiry even when the snapshot is older", () => {
+  const yesterday = new Date(2026, 8, 11, 22, 30).getTime();
+  const today = new Date(2026, 8, 12, 9, 0);
+  const saved = readAt(buildWidgetData(prefs, [loaded("steps", 12_340), loaded("distance", 4.2)]), yesterday);
+  const merged = mergeWidgetData(
+    saved,
+    readAt(buildWidgetData(prefs, [loaded("steps", 800), { id: "distance", value: null, status: "error" }]), today.getTime()),
+  );
+  const expired = expireStaleWidgetData(merged, today);
+  expect(expired.metricsById.steps.display).toBe("800");
+  expect(expired.metricsById.distance.display).toBe("--");
 });
 
 test("signing out clears all retained metric values", () => {

@@ -11,9 +11,11 @@ import { router, useFocusEffect, useLocalSearchParams, type Href } from 'expo-ro
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Animated, { FadeIn, FadeInDown, LinearTransition } from 'react-native-reanimated';
 
+import { DeviceWorkouts } from '@/components/fitness/device-workouts';
 import { MetricIcon } from '@/components/metric-icon';
 import { ThemedText } from '@/components/themed-text';
 import { Fonts, MaxContentWidth, Spacing } from '@/constants/theme';
+import { useDeviceWorkouts } from '@/hooks/use-device-workouts';
 import { useFitnessConnections } from '@/hooks/use-fitness-connections';
 import { useTheme } from '@/hooks/use-theme';
 import { EXERCISE_MUSCLES, getCatalogExercise } from '@/lib/exercise-catalog';
@@ -38,6 +40,8 @@ import { clerkSession } from '@/lib/clerk-session';
 
 type FitnessSection = 'exercises' | 'history' | 'connections';
 
+const DEVICE_WORKOUT_DAYS = 7;
+
 const SECTIONS: { id: FitnessSection; label: string }[] = [
   { id: 'exercises', label: 'Exercises' },
   { id: 'history', label: 'History' },
@@ -60,6 +64,7 @@ export function FitnessScreen() {
   const [searchError, setSearchError] = useState<string | null>(null);
   const [statsNow] = useState(() => Date.now());
   const fitnessConnections = useFitnessConnections(accountConnected);
+  const deviceWorkouts = useDeviceWorkouts(DEVICE_WORKOUT_DAYS);
 
   const refresh = useCallback(async () => {
     try {
@@ -186,12 +191,15 @@ export function FitnessScreen() {
         ) : null}
 
         {section === 'history' ? (
-          <WorkoutHistory
-            logs={logs}
-            loading={loading}
-            onBrowse={() => setSection('exercises')}
-            onDeleted={refresh}
-          />
+          <>
+            <DeviceWorkouts state={deviceWorkouts} days={DEVICE_WORKOUT_DAYS} />
+            <WorkoutHistory
+              logs={logs}
+              loading={loading}
+              onBrowse={() => setSection('exercises')}
+              onDeleted={refresh}
+            />
+          </>
         ) : null}
 
         {section === 'connections' ? (

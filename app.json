@@ -54,7 +54,8 @@
         "android.permission.health.READ_OXYGEN_SATURATION",
         "android.permission.health.READ_RESPIRATORY_RATE",
         "android.permission.health.READ_VO2_MAX",
-        "android.permission.health.READ_HEART_RATE_VARIABILITY"
+        "android.permission.health.READ_HEART_RATE_VARIABILITY",
+        "android.permission.health.READ_HEALTH_DATA_IN_BACKGROUND"
       ]
     },
     "web": {

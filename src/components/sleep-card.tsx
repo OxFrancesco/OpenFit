@@ -25,12 +25,13 @@ export function SleepCard({ sessions }: { sessions: SleepSummary[] }) {
 }
 
 function formatSleepDuration(session: SleepSummary) {
-  const minutes = session.minutesAsleep ?? session.minutesInSleepPeriod;
+  const raw = session.minutesAsleep ?? session.minutesInSleepPeriod;
 
-  if (minutes === null) {
+  if (raw === null) {
     return '--';
   }
 
+  const minutes = Math.round(raw);
   return `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
 }
 

@@ -1,4 +1,5 @@
 import type { DashboardPrefs } from "@/lib/dashboard-prefs-core";
+import { localDate } from "@/lib/device-health-core";
 import type { HealthMetric } from "@/lib/health-data";
 import {
   DEFAULT_RING_IDS,
@@ -33,6 +34,8 @@ export type WidgetSlot = {
   /** Fraction of the goal clamped to 0..1; 0 when value is missing. */
   progress: number;
   color: `#${string}`;
+  /** When this slot's value was read from the health store; absent for placeholders. */
+  fetchedAt?: number;
   /** iOS widget-only generated outer/middle/inner heart-ring image URIs. */
   ringImageUris?: string[];
 };
@@ -68,14 +71,16 @@ export function buildWidgetData(
     colorById.set(id, WIDGET_SLOT_COLORS[i]);
   });
 
+  const now = Date.now();
   const createSlot = (id: string, color: `#${string}`): WidgetSlot => {
     const def = getMetricDef(id);
     const value = byId.get(id)?.value ?? null;
     const goal = prefs.goals[id] ?? getDefaultGoal(id);
+    const status = byId.get(id)?.status ?? "unrequested";
 
     return {
       id,
-      status: byId.get(id)?.status ?? "unrequested",
+      status,
       label: def?.shortLabel ?? def?.label ?? id,
       value: value ?? 0,
       display: formatValue(value, def?.fractionDigits ?? 0),
@@ -84,6 +89,7 @@ export function buildWidgetData(
       progress:
         value !== null && goal > 0 ? Math.min(1, Math.max(0, value / goal)) : 0,
       color,
+      ...(status === "loaded" || status === "empty" ? { fetchedAt: now } : {}),
     };
   };
 
@@ -96,7 +102,37 @@ export function buildWidgetData(
     metricsById[id] = createSlot(id, colorById.get(id) ?? "#8E8E93");
   }
 
-  return { slots, metricsById, updatedAt: Date.now() };
+  return { slots, metricsById, updatedAt: now };
+}
+
+/**
+ * Widgets show today's totals. Once the local date moves past the time a
+ * summed metric was read, that value belongs to yesterday and renders as
+ * '--' until the next refresh. Averages and body measurements keep their
+ * last reading.
+ */
+export function expireStaleWidgetData<T extends WidgetData | null>(
+  data: T,
+  now = new Date(),
+): T {
+  if (!data) return data;
+  const today = localDate(now);
+  const expire = (slot: WidgetSlot): WidgetSlot => {
+    const readAt = slot.fetchedAt ?? data.updatedAt;
+    if (
+      getMetricDef(slot.id)?.aggregate !== "sum" ||
+      localDate(new Date(readAt)) === today
+    )
+      return slot;
+    return { ...slot, status: "empty", value: 0, display: "--", progress: 0 };
+  };
+  return {
+    ...data,
+    slots: data.slots.map(expire),
+    metricsById: Object.fromEntries(
+      Object.entries(data.metricsById).map(([id, slot]) => [id, expire(slot)]),
+    ),
+  };
 }
 
 /** Blank slots for the signed-out / never-synced states. */

@@ -27,11 +27,30 @@ export function deviceSnapshot(result: DeviceHealthResult, ids: string[], start:
     const value = metric?.value ?? null;
     return [{ id, label: def.label, unit: def.unit, value,
       status: metric?.error ? 'error' : value === null ? 'empty' : 'loaded',
-      error: metric?.error, dailyValues: metric?.dailyValues }];
+      error: metric?.error, dailyValues: metric?.dailyValues && [...metric.dailyValues].sort((a, b) => b.date.localeCompare(a.date)) }];
   });
-  return { metrics, exercises: result.exercises, sleepSessions: result.sleepSessions,
+  return { metrics, exercises: dedupeExercises(result.exercises), sleepSessions: result.sleepSessions,
     rangeLabel: `${start.toLocaleDateString()} – ${end.toLocaleDateString()}`,
     raw: { rollups: {}, exercises: {}, sleep: {} } };
+}
+
+/**
+ * Two apps often write the same session (a watch app and its phone companion).
+ * Sessions of the same type whose start and end fall within a minute of each
+ * other are one workout; keep the record that carries the most detail.
+ */
+export function dedupeExercises(exercises: HealthSnapshot['exercises']): HealthSnapshot['exercises'] {
+  const TOLERANCE_MS = 60_000;
+  const detail = (e: HealthSnapshot['exercises'][number]) =>
+    Number(e.caloriesKcal !== null) + Number(e.distanceKm !== null) + Number(e.steps !== null) + Number(e.name !== 'Workout');
+  const near = (a?: string, b?: string) => Math.abs(Date.parse(a ?? '') - Date.parse(b ?? '')) <= TOLERANCE_MS;
+  const kept: HealthSnapshot['exercises'] = [];
+  for (const exercise of exercises) {
+    const index = kept.findIndex(k => k.type === exercise.type && near(k.startTime, exercise.startTime) && near(k.endTime, exercise.endTime));
+    if (index === -1) kept.push(exercise);
+    else if (detail(exercise) > detail(kept[index])) kept[index] = exercise;
+  }
+  return kept;
 }
 
 export function intervalMinutes(start: string, end: string) {

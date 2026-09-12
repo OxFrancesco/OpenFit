@@ -7,3 +7,4 @@ export async function readDeviceHealth(_ids: string[], _start: Date, _end: Date)
   throw new Error('Health data is available in the iPhone and Android apps.');
 }
 export async function openHealthSettings() { await requestDeviceHealth(); }
+export async function canReadDeviceHealthInBackground() { return false; }

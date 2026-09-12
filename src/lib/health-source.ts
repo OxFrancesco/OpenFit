@@ -5,7 +5,7 @@ import { requestDeviceHealth, readDeviceHealth } from './device-health';
 import { healthWindow, deviceSnapshot } from './device-health-core';
 import { DEFAULT_CARD_IDS, DEFAULT_RING_IDS } from './metric-catalog';
 import type { HealthSnapshotOptions } from './health-data';
-export { healthSourceName, openHealthSettings } from './device-health';
+export { canReadDeviceHealthInBackground, healthSourceName, openHealthSettings } from './device-health';
 const KEY = 'openfit.device-health-owner.v1';
 export async function isHealthEnabled() {
   if (Platform.OS === 'web') return false;

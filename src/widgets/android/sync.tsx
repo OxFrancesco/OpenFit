@@ -3,7 +3,7 @@ import {
   requestWidgetUpdateById,
   type WidgetInfo,
 } from "react-native-android-widget";
-import type { WidgetData } from "@/lib/widget-data";
+import { expireStaleWidgetData, type WidgetData } from "@/lib/widget-data";
 import { refreshWidgetMetrics } from "./refresh-data";
 import {
   configureWidgetData,
@@ -50,7 +50,7 @@ export function renderAndroidWidget(
   const Widget = NAME_TO_WIDGET[info.widgetName];
   return (
     <Widget
-      data={configureWidgetData(data, prefs)}
+      data={configureWidgetData(expireStaleWidgetData(data), prefs)}
       widgetId={info.widgetId}
       background={prefs.background}
       textTone={prefs.textTone}

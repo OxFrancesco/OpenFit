@@ -15,3 +15,5 @@ export async function readDeviceHealth(ids: string[], start: Date, end: Date) {
   return (await requireReader()).read(ids, start.toISOString(), end.toISOString());
 }
 export async function openHealthSettings() { await Linking.openURL('x-apple-health://'); }
+/** HealthKit has no separate background grant; the BGTask reads with the normal authorization. */
+export async function canReadDeviceHealthInBackground() { return Boolean(reader); }
