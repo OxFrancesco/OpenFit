@@ -33,7 +33,7 @@ These checks do not establish physical-device permission or real-record behavior
 
 ## Health behavior
 
-Android supports up to 30 days and refreshes widgets while OpenFit is in the foreground. iPhone also supports 90 days. Missing health records remain empty. The app does not write to either health store.
+Android supports up to 30 days. Widgets refresh while OpenFit is in the foreground and, when the user grants Health Connect background read, every 30 minutes from the widget task handler. Summed widget metrics reset to `--` after local midnight until the next read. iPhone also supports 90 days. Missing health records remain empty. The app does not write to either health store. Workouts recorded by other apps appear read-only under Workouts > History.
 
 The coach's health-sharing switch starts off. With sharing enabled, a bounded summary goes to the Cloudflare AI worker. Manual gym entries and Strava/Garmin connections are not included. Strava and Garmin remain connection-only and require the existing provider approval flags.
 

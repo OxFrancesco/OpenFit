@@ -12,7 +12,7 @@ Email-only accounts work. Existing Google-linked accounts retain their current c
 
 ## Platform limits
 
-- Android exposes today, 7, 14 and 30 days. It does not request older-history or background-read permission. Widgets retain the latest foreground snapshot.
+- Android exposes today, 7, 14 and 30 days. It does not request older-history permission. It requests `READ_HEALTH_DATA_IN_BACKGROUND` so the 30-minute widget update can read Health Connect while the app is closed; when the user declines, widgets retain the latest foreground snapshot. Summed metrics (steps, calories, distance) render as `--` once the local date passes the day they were read, so yesterday's totals never pose as today's. Declare the background permission in the Play Console Health Connect form.
 - iPhone also supports 90 days. HealthKit does not reveal whether individual read permissions were denied. Missing records remain empty rather than zero.
 - Web supports accounts, coach conversations and training screens. It cannot read HealthKit or Health Connect. Device health does not sync to the web dashboard.
 - Native health modules require a new app build. An over-the-air JavaScript update cannot install them.
