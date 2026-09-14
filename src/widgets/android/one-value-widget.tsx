@@ -23,7 +23,8 @@ export function OneValueWidget({
   const [slot] = normalizeSlots(data);
   const side = Math.min(width, height);
   const padding = Math.round(side * 0.1);
-  const compact = side < 120;
+  const iconSize = Math.round(Math.min(28, Math.max(12, side * 0.12)));
+  const borderColor = background === "light" ? "#C5CEC4" : "#405247";
   const unit =
     slot.unit.toLowerCase() === slot.label.toLowerCase() ? "" : slot.unit;
   return (
@@ -43,7 +44,10 @@ export function OneValueWidget({
           height: side,
           backgroundColor: palette.background,
           borderRadius: Math.round(side * 0.16),
-          padding,
+          borderWidth: background === "transparent" ? 0 : 1,
+          borderColor,
+          paddingHorizontal: padding,
+          paddingVertical: Math.round(side * 0.15),
         }}
       >
         <OverlapWidget
@@ -55,7 +59,7 @@ export function OneValueWidget({
               maxLines={1}
               style={{
                 width: "match_parent",
-                paddingRight: compact ? 18 : 36,
+                paddingRight: iconSize + 6,
                 fontSize: Math.min(22, Math.max(11, side * 0.12)),
                 color: palette.secondary,
                 ...palette.textShadow,
@@ -74,8 +78,9 @@ export function OneValueWidget({
                 maxLines={1}
                 style={{
                   width: "match_parent",
-                  fontSize: Math.round(side * 0.38),
+                  fontSize: Math.round(side * 0.46),
                   fontWeight: "bold",
+                  fontStyle: "italic",
                   color: slot.color,
                   ...palette.textShadow,
                   adjustsFontSizeToFit: true,
@@ -100,7 +105,9 @@ export function OneValueWidget({
               widgetId={widgetId}
               background={background}
               textTone={textTone}
-              compact={compact}
+              compact
+              filled
+              iconSize={iconSize}
             />
           </FlexWidget>
         </OverlapWidget>
