@@ -64,7 +64,7 @@ export default function SupportScreen() {
       <LegalSection title="Data Deletion">
         <LegalParagraph>
           Email {OPENFIT_CONTACT_EMAIL} with the subject OpenFit data deletion request. OpenFit
-          stores manual gym data locally on your device, while coach messages and any connected
+          stores manual gym data locally on your device, while historical coach messages and any connected
           Strava or Garmin credential are stored in the account-specific server agent. Delete
           local gym entries or clear app/site data, disconnect each fitness provider, and identify
           the OpenFit account used with OpenFit so support can locate the correct server record.

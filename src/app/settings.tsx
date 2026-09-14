@@ -4,6 +4,7 @@ import { Stack, useRouter, type Href } from 'expo-router';
 import { useState, type ReactNode } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
+import { HealthExportSettings } from '@/components/health-export-settings';
 import { ThemedText } from '@/components/themed-text';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -80,6 +81,8 @@ export default function SettingsScreen() {
             <Button disabled={busy} onPress={disconnect}>Disconnect device health</Button>
             {message && <ThemedText type="small" accessibilityRole="alert">{message}</ThemedText>}
           </View>}
+
+          <HealthExportSettings />
 
           {__DEV__ && (
             <Section index={Platform.OS === 'ios' ? 4 : 3}>

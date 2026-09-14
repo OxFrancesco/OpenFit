@@ -196,14 +196,14 @@ export async function getExerciseById(exerciseId: string) {
   return row ? parseExercise(row.payload) : null;
 }
 
-export async function listWorkoutLogs(limit = 100) {
+export async function listWorkoutLogs(limit: number | null = 100) {
   const database = await getDatabase();
   const rows = await database.getAllAsync<WorkoutRow>(
     `SELECT id, exercise_id, performed_at, sets, reps, weight_kg, entered_unit, notes
      FROM workout_logs
      ORDER BY performed_at DESC
      LIMIT ?`,
-    limit
+    limit ?? -1
   );
   return rows.map(mapWorkoutRow);
 }

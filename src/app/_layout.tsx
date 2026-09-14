@@ -71,7 +71,7 @@ function AppLayout() {
                 header: ({ options, route, back, navigation }) => (
                   <Appbar.Header mode="small" style={{ backgroundColor: theme.background }}>
                     {back &&
-                    !['index', 'fitness', 'coach', 'settings', 'log-workout'].includes(
+                    !['index', 'fitness', 'settings', 'log-workout'].includes(
                       route.name
                     ) ? (
                       <Appbar.BackAction
@@ -104,7 +104,6 @@ function AppLayout() {
             >
               <Stack.Screen name="index" options={{ title: 'OpenFit' }} />
               <Stack.Screen name="fitness" options={{ title: 'Workouts' }} />
-              <Stack.Screen name="coach" options={{ title: 'Coach' }} />
               <Stack.Screen name="settings" options={{ title: 'Settings' }} />
               <Stack.Screen
                 name="log-workout"

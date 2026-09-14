@@ -7,13 +7,12 @@ import { ThemedText } from './themed-text';
 import { useTheme } from '@/hooks/use-theme';
 
 const destinations: {
-  key: '/' | '/fitness' | '/coach' | '/settings';
+  key: '/' | '/fitness' | '/settings';
   title: string;
   icon: MaterialIconName;
 }[] = [
   { key: '/', title: 'Health', icon: 'favorite-border' },
   { key: '/fitness', title: 'Workouts', icon: 'fitness-center' },
-  { key: '/coach', title: 'Coach', icon: 'chat-bubble-outline' },
   { key: '/settings', title: 'Settings', icon: 'settings' },
 ];
 export function useMainDestination() {

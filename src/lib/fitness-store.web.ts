@@ -36,9 +36,9 @@ export async function getExerciseById(exerciseId: string) {
   return getCatalogExercise(exerciseId);
 }
 
-export async function listWorkoutLogs(limit = 100) {
+export async function listWorkoutLogs(limit: number | null = 100) {
   const logs = readLogs().sort((left, right) => right.performedAt.localeCompare(left.performedAt));
-  return logs.slice(0, limit);
+  return limit === null ? logs : logs.slice(0, limit);
 }
 
 export async function listWorkoutLogsForExercise(exerciseId: string) {

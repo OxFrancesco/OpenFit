@@ -14,7 +14,7 @@
         "com.apple.developer.healthkit": true
       },
       "infoPlist": {
-        "NSHealthShareUsageDescription": "OpenFit reads the health data you choose for your dashboard and widgets. You can separately choose to share a summary with the health coach.",
+        "NSHealthShareUsageDescription": "OpenFit reads the health data you choose for your dashboard and widgets. You can export a summary from Settings to share yourself.",
         "UIBackgroundModes": [
           "fetch",
           "processing",
@@ -547,7 +547,8 @@
       "@clerk/expo",
       "./plugins/with-widget-bundle-inputs",
       "react-native-health-connect",
-      "./plugins/with-health-rationale"
+      "./plugins/with-health-rationale",
+      "expo-sharing"
     ],
     "experiments": {
       "typedRoutes": true,

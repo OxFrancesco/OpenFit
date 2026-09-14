@@ -50,8 +50,8 @@ export default function TermsScreen() {
           by their own terms, privacy notices, availability, account requirements, and approvals.
         </LegalParagraph>
         <LegalParagraph>
-          Strava API materials and data must not be used with the Personal Health-Data Coach or any
-          other AI system, or combined with device health, Garmin, manual workout data, or other
+          Strava API materials and data must not be used with AI exports or any
+          AI system, or combined with device health, Garmin, manual workout data, or other
           customer data. Strava and Garmin credentials remain encrypted in the per-user server agent
           and are not returned to the app.
         </LegalParagraph>
