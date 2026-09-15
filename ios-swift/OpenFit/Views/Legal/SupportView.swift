@@ -27,5 +27,7 @@ struct SupportView: View {
             }
         }
         .navigationTitle("OpenFit Support")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar(.hidden, for: .tabBar)
     }
 }

@@ -30,5 +30,7 @@ struct TermsView: View {
             }
         }
         .navigationTitle("OpenFit Terms of Service")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar(.hidden, for: .tabBar)
     }
 }

@@ -39,5 +39,7 @@ struct PrivacyView: View {
             }
         }
         .navigationTitle("OpenFit Privacy Policy")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar(.hidden, for: .tabBar)
     }
 }
