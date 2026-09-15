@@ -52,3 +52,5 @@ resources/
 
 # local Cloudflare development state
 .wrangler/
+ios-swift/OpenFit.xcodeproj/
+ios-swift/build/
