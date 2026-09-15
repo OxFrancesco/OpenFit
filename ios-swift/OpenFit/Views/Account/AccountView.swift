@@ -67,6 +67,8 @@ struct AccountView: View {
                         sent = false
                         code = ""
                         busy = false
+                        selectedTab.wrappedValue = 0
+                        dismiss()
                     } label: {
                         Text("Sign out")
                             .themed(.smallBold, color: Theme.primary)
@@ -163,6 +165,8 @@ struct AccountView: View {
         }
         .background(Theme.background)
         .navigationTitle("Account")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar(.hidden, for: .tabBar)
     }
 
     /// Local stub: "sends" a code (any 6-digit code verifies).
