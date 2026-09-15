@@ -1,0 +1,58 @@
+name: OpenFit
+options:
+  bundleIdPrefix: com.francescooddo
+targets:
+  OpenFit:
+    type: application
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: OpenFit
+    info:
+      path: OpenFit/Info.plist
+      properties:
+        CFBundleDisplayName: OpenFit
+        CFBundleShortVersionString: "1.0"
+        CFBundleVersion: "1"
+        UILaunchScreen: {}
+        UIRequiresFullScreen: true
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        "UISupportedInterfaceOrientations~ipad":
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        NSHealthShareUsageDescription: "OpenFit reads the health data you choose for your dashboard and widgets. You can export a summary from Settings to share yourself."
+        NSHealthUpdateUsageDescription: "OpenFit writes sample health data only when you ask it to in debug builds."
+    entitlements:
+      path: OpenFit/OpenFit.entitlements
+      properties:
+        com.apple.developer.healthkit: true
+        com.apple.developer.healthkit.access: []
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.francescooddo.openfit
+        SWIFT_VERSION: "5.9"
+        GENERATE_INFOPLIST_FILE: NO
+        CODE_SIGN_IDENTITY: ""
+        TARGETED_DEVICE_FAMILY: "1,2"
+        DEVELOPMENT_TEAM: ""
+schemes:
+  OpenFit:
+    build:
+      targets:
+        OpenFit: all
+    run:
+      config: Debug
+      simulateAsynchronously: true
+    test:
+      config: Debug
+    profile:
+      config: Release
+    analyze:
+      config: Debug
+    archive:
+      config: Release
