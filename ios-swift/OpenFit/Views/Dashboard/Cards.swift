@@ -45,7 +45,7 @@ struct MetricCardView: View {
             Spacer(minLength: 0)
             HStack(alignment: .center, spacing: 4) {
                 VStack(alignment: .leading, spacing: 4) {
-                    if page == 0 {
+                    if page == 0 || page >= pageCount {
                         valueText(metric?.value)
                         if daily.count > 1 {
                             Text("\(days)-day \(def.aggregate == .avg ? "average" : "total")")
@@ -61,8 +61,8 @@ struct MetricCardView: View {
                 Spacer(minLength: 0)
                 if pageCount > 1 {
                     VStack {
-                        pagerArrow("chevron.up", disabled: page == 0) { page -= 1 }
-                        pagerArrow("chevron.down", disabled: page == pageCount - 1) { page += 1 }
+                        pagerArrow("chevron.up", disabled: page == 0) { page = max(0, page - 1) }
+                        pagerArrow("chevron.down", disabled: page >= pageCount - 1) { page = min(pageCount - 1, page + 1) }
                     }
                 }
             }
@@ -71,6 +71,7 @@ struct MetricCardView: View {
                 Text(error).themed(.caption, color: Theme.error).lineLimit(1)
             }
         }
+        .onChange(of: days) { _, _ in page = 0 }
         .padding(Spacing.three)
         .frame(minWidth: 140, minHeight: metricCardMinHeight, alignment: .topLeading)
         .background(Theme.card)
@@ -140,8 +141,8 @@ struct SleepCardView: View {
                             Image(systemName: "chevron.down").font(.system(size: 14))
                                 .foregroundStyle(Theme.textSecondary).frame(width: 28, height: 36)
                         }
-                        .disabled(page == sessions.count - 1)
-                        .opacity(page == sessions.count - 1 ? 0.25 : 1).buttonStyle(.plain)
+                        .disabled(page >= sessions.count - 1)
+                        .opacity(page >= sessions.count - 1 ? 0.25 : 1).buttonStyle(.plain)
                     }
                 }
             }
