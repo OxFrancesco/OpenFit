@@ -15,7 +15,6 @@ func seedSampleHealthData() async throws {
         HKObjectType.quantityType(forIdentifier: .stepCount)!,
         HKObjectType.quantityType(forIdentifier: .activeEnergyBurned)!,
         HKObjectType.quantityType(forIdentifier: .basalEnergyBurned)!,
-        HKObjectType.quantityType(forIdentifier: .appleExerciseTime)!,
         HKObjectType.quantityType(forIdentifier: .distanceWalkingRunning)!,
         HKObjectType.quantityType(forIdentifier: .heartRate)!,
         HKObjectType.quantityType(forIdentifier: .bodyMass)!,
@@ -62,13 +61,6 @@ func seedSampleHealthData() async throws {
             let start = dayStart.addingTimeInterval(TimeInterval(slot * 2 * 3600))
             if isToday && start > now { continue }
             samples.append(quantity(.basalEnergyBurned, 1500 / 12, .kilocalorie(), start, min(start.addingTimeInterval(2 * 3600), now)))
-        }
-
-        // Exercise minutes ~20–45
-        let exerciseStart = dayStart.addingTimeInterval(17 * 3600)
-        if !isToday || exerciseStart < now {
-            samples.append(quantity(.appleExerciseTime, Double.random(in: 20...45), .minute(),
-                                    exerciseStart, min(exerciseStart.addingTimeInterval(3600), now)))
         }
 
         // Distance 4–9 km
