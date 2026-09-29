@@ -21,6 +21,7 @@
     "expo-crypto": "~56.0.4",
     "expo-dev-client": "~56.0.22",
     "expo-device": "~56.0.4",
+    "expo-document-picker": "~56.0.4",
     "expo-file-system": "~56.0.8",
     "expo-font": "~56.0.7",
     "expo-glass-effect": "~56.0.4",
@@ -51,7 +52,8 @@
     "react-native-screens": "4.25.2",
     "react-native-svg": "15.15.4",
     "react-native-web": "~0.21.0",
-    "react-native-worklets": "0.8.3"
+    "react-native-worklets": "0.8.3",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@types/react": "~19.2.2",

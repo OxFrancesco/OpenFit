@@ -105,6 +105,7 @@ function AppLayout() {
               }}
             >
               <Stack.Screen name="index" options={{ title: 'OpenFit' }} />
+              <Stack.Screen name="workout-schedule" options={{ title: 'My schedule' }} />
               <Stack.Screen name="fitness" options={{ title: 'Workouts' }} />
               <Stack.Screen name="settings" options={{ title: 'Settings' }} />
               <Stack.Screen

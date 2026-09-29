@@ -6,7 +6,7 @@ import { Platform ,
   StyleSheet,
   View,
 } from 'react-native';
-import { Chip, Searchbar, SegmentedButtons } from 'react-native-paper';
+import { Button, Chip, Searchbar, SegmentedButtons } from 'react-native-paper';
 import { router, useFocusEffect, useLocalSearchParams, type Href } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Animated, { FadeIn, FadeInDown, LinearTransition } from 'react-native-reanimated';
@@ -180,6 +180,8 @@ export function FitnessScreen() {
         ) : null}
 
         {section === 'exercises' ? (
+          <>
+          <Button mode="outlined" icon="calendar" onPress={() => router.push('/workout-schedule')}>My schedule</Button>
           <ExerciseLibrary
             query={query}
             onChangeQuery={setQuery}
@@ -188,6 +190,7 @@ export function FitnessScreen() {
             exercises={exercises}
             logsByExercise={logsByExercise}
           />
+          </>
         ) : null}
 
         {section === 'history' ? (

@@ -36,7 +36,7 @@ function displayInputNumber(value: number) {
 
 export function WorkoutLogForm() {
   const theme = useTheme();
-  const params = useLocalSearchParams<{ exerciseId?: string | string[] }>();
+  const params = useLocalSearchParams<{ exerciseId?: string | string[]; scheduleNotes?: string }>();
   const exerciseId = Array.isArray(params.exerciseId) ? params.exerciseId[0] : params.exerciseId;
   const [exercise, setExercise] = useState<Exercise | null>(null);
   const [exerciseLogs, setExerciseLogs] = useState<WorkoutLog[]>([]);
@@ -44,7 +44,7 @@ export function WorkoutLogForm() {
   const [reps, setReps] = useState('8');
   const [weight, setWeight] = useState('');
   const [unit, setUnit] = useState<WeightUnit>('kg');
-  const [notes, setNotes] = useState('');
+  const [notes, setNotes] = useState(() => typeof params.scheduleNotes === 'string' ? params.scheduleNotes.slice(0, 500) : '');
   const [loading, setLoading] = useState(Boolean(exerciseId));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);

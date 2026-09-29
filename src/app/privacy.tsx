@@ -1,7 +1,7 @@
 import { LegalPage, LegalParagraph, LegalSection, OPENFIT_CONTACT_EMAIL, OPENFIT_PROVIDER } from '@/components/legal-page';
 
 export default function PrivacyPolicyScreen() {
-  return <LegalPage title="OpenFit Privacy Policy" updated="September 14, 2026">
+  return <LegalPage title="OpenFit Privacy Policy" updated="September 29, 2026">
     <LegalSection title="Who we are">
       <LegalParagraph>OpenFit is provided by {OPENFIT_PROVIDER}. Contact {OPENFIT_CONTACT_EMAIL} for privacy questions or deletion requests.</LegalParagraph>
     </LegalSection>
@@ -19,6 +19,10 @@ export default function PrivacyPolicyScreen() {
     </LegalSection>
     <LegalSection title="Manual workouts">
       <LegalParagraph>The exercise library and gym log work locally. Exercise names, dates, sets, repetitions, weights and notes stay in SQLite on the phone or browser storage on web. They are not automatically sent to an AI or fitness provider. Signing out does not erase them. Delete entries in Fitness or clear app or site data.</LegalParagraph>
+    </LegalSection>
+    <LegalSection title="Workout schedule import">
+      <LegalParagraph>When you select Read schedule, OpenFit sends only the text and photo or PDF you submit to OpenRouter. OpenAI GPT-6 Luna reads and translates the schedule; TypeSafe JEV matches the extracted exercises to OpenFit&apos;s catalog. OpenRouter and the model providers process that content under their own policies. Device health records and existing workout logs are not included.</LegalParagraph>
+      <LegalParagraph>You can review and change exercise matches before saving. Saved schedules stay on this device or in this browser. Signing out does not erase them. Clear app or site data to remove the saved schedule. OpenFit does not save the uploaded source file on its server.</LegalParagraph>
     </LegalSection>
     <LegalSection title="Optional fitness connections">
       <LegalParagraph>Strava and Garmin connections are available only when the deployment has the required provider approval. This version establishes and revokes account connections only; it does not import activity records. The app receives the provider account label, connection state, date and granted permissions. Access and refresh credentials are encrypted in the per-user Cloudflare agent and are not returned to the app.</LegalParagraph>

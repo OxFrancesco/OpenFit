@@ -52,3 +52,13 @@ bunx eas-cli deploy --prod --non-interactive --environment production
 ```
 
 The [health agent](workers/health-agent/README.md) uses the personal Cloudflare account pinned in its Wrangler config. Reports publish through `/Volumes/T6-7/Coding/Personal/Reports`.
+
+## Workout schedules
+
+Open **Workouts → My schedule** and paste a schedule or select a JPEG, PNG, WebP, or PDF up to 8 MB. Choose the output language, then select **Read schedule**. Sign-in is required for analysis. Review the exercises, correct uncertain matches, and save the schedule on this device. **Log workout** carries the trainer's prescription into the workout notes; it does not mark planned sets as completed.
+
+The server uses `OPENROUTER_API_KEY`, `openai/gpt-6-luna` for reading and translation, and `~typesafe/jev-latest` through OpenRouter's Decisions API for catalog matching. Keep the key in `.env.local` and the Expo project's sensitive production environment. Never use an `EXPO_PUBLIC_` key variable. The configured OpenFit key has a $5 total cap.
+
+Extraction keeps original names, translated names, days, prescriptions, and warnings. JEV sees the full exercise catalog and has a no-match option. Matches below 0.8 choice probability or 0.7 confidence require manual selection. These are conservative starting thresholds, not calibrated accuracy guarantees. Up to 60 exercise entries are supported. New native builds are required for `expo-document-picker`.
+
+Run `bun test src/lib/workout-schedule.test.js` for regression checks. `bun scripts/verify-workout-import.js [path-to-png-or-pdf]` makes paid provider calls using a synthetic Italian schedule and expects bench press, lat pulldown, and back squat in that order.
