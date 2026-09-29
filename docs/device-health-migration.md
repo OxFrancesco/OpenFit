@@ -6,13 +6,17 @@ OpenFit uses Clerk for accounts, Apple Health on iPhone, and Health Connect on A
 
 Health permission is separate from sign-in. Read access stays on the phone. The dashboard and widgets use native records. Disconnecting clears OpenFit's connection marker, cached dashboard and widget values. Users revoke OS permissions in their health app.
 
+Background widget reads use the saved device-health connection rather than loading Clerk in a headless process. They check the connection owner before and after reading and discard results if it changes. Signing out clears the connection before ending the Clerk session.
+
+After the first sign-in on a device, permission setup offers notification access and, on Android, unrestricted battery access for widget updates. Both are optional. Setup completion is saved per account; users can revisit it from Settings. Returning from system settings reads the current OS permissions. This requests notification permission only; it does not register remote push tokens or schedule exercise reminders.
+
 The coach works without health access. Its health-sharing switch starts off. When enabled, each question sends a bounded summary of the selected period to the existing Cloudflare AI worker. The worker stores encrypted conversation messages for 90 days. It does not fetch health records from Google. Previous conversation messages can contain health information shared earlier.
 
 Email-only accounts work. Existing Google-linked accounts retain their current conversation and fitness-connection storage identifier. Strava and Garmin remain separate, approval-gated connection flows.
 
 ## Platform limits
 
-- Android exposes today, 7, 14 and 30 days. It does not request older-history permission. It requests `READ_HEALTH_DATA_IN_BACKGROUND` so the 30-minute widget update can read Health Connect while the app is closed; when the user declines, widgets retain the latest foreground snapshot. Summed metrics (steps, calories, distance) render as `--` once the local date passes the day they were read, so yesterday's totals never pose as today's. Declare the background permission in the Play Console Health Connect form.
+- Android exposes today, 7, 14 and 30 days. It does not request older-history permission. It requests `READ_HEALTH_DATA_IN_BACKGROUND` so widgets can read Health Connect while the app is closed. OpenFit registers a background refresh with a 15-minute minimum interval, alongside the launcher's 30-minute widget updates. Android can delay either mechanism to save battery. When the user declines background health access, widgets retain the latest foreground snapshot. Summed metrics (steps, calories, distance) render as `--` once the local date passes the day they were read, so yesterday's totals never pose as today's. Declare the background permission in the Play Console Health Connect form.
 - iPhone also supports 90 days. HealthKit does not reveal whether individual read permissions were denied. Missing records remain empty rather than zero.
 - Web supports accounts, coach conversations and training screens. It cannot read HealthKit or Health Connect. Device health does not sync to the web dashboard.
 - Native health modules require a new app build. An over-the-air JavaScript update cannot install them.

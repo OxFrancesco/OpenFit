@@ -83,6 +83,7 @@ export default function SettingsScreen() {
           </View>}
 
           <HealthExportSettings />
+          {Platform.OS !== 'web' && <Button mode="outlined" onPress={() => router.push('/permissions')}>Notifications and widget permissions</Button>}
 
           {__DEV__ && (
             <Section index={Platform.OS === 'ios' ? 4 : 3}>

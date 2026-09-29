@@ -27,7 +27,9 @@ for (const [index, source] of map.sources.entries()) {
   const relative = source.slice(source.indexOf("/src/") + 1);
   if (
     !relative.startsWith("src/widgets/android/") &&
-    relative !== "src/lib/widget-sync.android.ts"
+    relative !== "src/lib/widget-sync.android.ts" &&
+    relative !== "src/lib/background-refresh.ts" &&
+    relative !== "src/lib/health-source.ts"
   )
     continue;
   assert.equal(

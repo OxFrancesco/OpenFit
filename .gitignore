@@ -46,6 +46,7 @@ example
 
 # generated build output
 /build
+/artifacts/widget-sync/
 
 # codeview reference codebases
 resources/

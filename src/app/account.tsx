@@ -95,8 +95,8 @@ export default function AccountScreen() {
     setBusy(true);
     setError(null);
     try {
-      await signOut();
       await clearHealthSession();
+      await signOut();
       setSent(false);
       setCode('');
     } catch {

@@ -27,7 +27,7 @@
     },
     "android": {
       "package": "com.francescooddo.fitty",
-      "versionCode": 5,
+      "versionCode": 7,
       "adaptiveIcon": {
         "backgroundColor": "#FFFFFF",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -477,6 +477,7 @@
         }
       ],
       "expo-background-task",
+      "expo-notifications",
       [
         "react-native-android-widget",
         {

@@ -12,6 +12,7 @@ import {
 } from '@expo-google-fonts/roboto';
 import { StatusBar } from 'expo-status-bar';
 import { MaterialProvider } from '@/components/material-provider';
+import { PermissionOnboarding } from '@/components/permission-onboarding';
 import { MaterialNavigation, useMainDestination } from '@/components/material-navigation';
 import { useTheme } from '@/hooks/use-theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -44,6 +45,7 @@ function AppLayout() {
   return (
     <MaterialProvider>
       <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
+      <PermissionOnboarding>
       {!loaded && !error ? (
         <View
           style={{
@@ -128,6 +130,7 @@ function AppLayout() {
           {!rail ? <MaterialNavigation /> : null}
         </View>
       )}
+      </PermissionOnboarding>
     </MaterialProvider>
   );
 }

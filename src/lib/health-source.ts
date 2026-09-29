@@ -1,7 +1,7 @@
 import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import { clerkSession } from './clerk-session';
-import { requestDeviceHealth, readDeviceHealth } from './device-health';
+import { canReadDeviceHealthInBackground, requestDeviceHealth, readDeviceHealth } from './device-health';
 import { healthWindow, deviceSnapshot } from './device-health-core';
 import { DEFAULT_CARD_IDS, DEFAULT_RING_IDS } from './metric-catalog';
 import type { HealthSnapshotOptions } from './health-data';
@@ -34,4 +34,16 @@ export async function fetchHealthSnapshot(options: HealthSnapshotOptions = {}) {
 export async function fetchHealthMetrics(ids: string[], days: number) {
   const snapshot = await fetchHealthSnapshot({ metricIds: ids, days });
   return { metrics: snapshot.metrics, raw: snapshot.raw.rollups };
+}
+
+export async function fetchBackgroundHealthMetrics(ids: string[]) {
+  if (Platform.OS === 'web') return null;
+  // Local consent survives a headless launch, where Clerk has no mounted provider.
+  // Disconnecting or signing out removes this marker before clearing the widgets.
+  const owner = await SecureStore.getItemAsync(KEY);
+  if (!owner || !await canReadDeviceHealthInBackground()) return null;
+  const { start, end } = healthWindow(1);
+  const result = await readDeviceHealth(ids, start, end);
+  if (await SecureStore.getItemAsync(KEY) !== owner) return null;
+  return deviceSnapshot(result, ids, start, end).metrics;
 }
