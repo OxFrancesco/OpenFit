@@ -7,11 +7,14 @@ export const scheduleEntrySchema = z.object({
   translatedName: z.string().min(1).max(200),
   prescription: z.string().max(600),
   notes: z.string().max(600),
+  kind: z.enum(['strength', 'cardio', 'mobility', 'stretching']).default('strength'),
+  muscleGroup: z.string().max(100).default(''),
 });
 export const extractedScheduleSchema = z.object({
   title: z.string().min(1).max(160),
   sourceLanguage: z.string().max(80),
   entries: z.array(scheduleEntrySchema).min(1).max(60),
+  dayNotes: z.array(z.object({ day: z.string().max(100), notes: z.string().max(600) })).max(60).default([]),
   warnings: z.array(z.string().max(300)).max(20),
 });
 export const matchedEntrySchema = scheduleEntrySchema.extend({
@@ -33,3 +36,28 @@ export const scheduleInputSchema = z.object({
   }).optional(),
 }).refine(value => value.text.trim() || value.attachment, 'Add a schedule photo, PDF, or text.');
 export type ScheduleInput = z.infer<typeof scheduleInputSchema>;
+
+export type MatchedScheduleEntry = z.infer<typeof matchedEntrySchema>;
+
+export function scheduleEntryKind(entry: MatchedScheduleEntry) {
+  const name = `${entry.originalName} ${entry.displayName}`.toLocaleLowerCase();
+  if (/mobilit[àa]|mobility/.test(name)) return 'mobility';
+  if (/stretching|allungamento/.test(name)) return 'stretching';
+  if (/run\s*\/\s*bike|corsa\s*\/\s*bicicletta/.test(name)) return 'cardio';
+  return entry.kind;
+}
+
+export function scheduleDays(schedule: WorkoutSchedule) {
+  return [...new Set(schedule.entries.map(entry => entry.day || 'Workout'))];
+}
+
+export function scheduleLogParams(entry: MatchedScheduleEntry, dayNotes = '') {
+  const setsAndReps = entry.prescription.match(/(?:^|\s)(\d{1,2})\s*[x×]\s*(\d{1,3})(?!\d)/i);
+  const repsAreRange = setsAndReps && /^\s*[-–]/.test(entry.prescription.slice((setsAndReps.index ?? 0) + setsAndReps[0].length));
+  return {
+    exerciseId: entry.exerciseId ?? '',
+    scheduleNotes: [entry.day, entry.originalName, entry.prescription, dayNotes, entry.notes].filter(Boolean).join(' · ').slice(0, 500),
+    ...(setsAndReps ? { plannedSets: setsAndReps[1] } : {}),
+    ...(setsAndReps && !repsAreRange ? { plannedReps: setsAndReps[2] } : {}),
+  };
+}

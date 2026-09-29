@@ -18,6 +18,14 @@ const strength = (
 });
 
 export const EXERCISE_CATALOG: readonly Exercise[] = [
+  strength('leg-curl', 'Leg Curl', 'Hamstrings', 'Machine', [], ['leg curl', 'curl delle gambe']),
+  strength('flat-chest-press', 'Flat Chest Press', 'Chest', 'Unspecified', ['Triceps'], ['spinte piane', 'flat press']),
+  strength('incline-chest-press', 'Incline Chest Press', 'Chest', 'Unspecified', ['Triceps', 'Shoulders'], ['spinte inclinate', 'incline press']),
+  strength('lateral-raise-unspecified', 'Lateral Raise', 'Shoulders', 'Unspecified', [], ['alzate laterali']),
+  strength('machine-row', 'Machine Row', 'Back', 'Machine', ['Biceps'], ['row machine presa prona', 'pronated machine row']),
+  strength('single-arm-supinated-machine-pulldown', 'Single-Arm Supinated Machine Pulldown', 'Back', 'Machine', ['Biceps'], ['pull down machine mono supina']),
+  strength('horizontal-cable-triceps-extension', 'Horizontal Cable Triceps Extension', 'Triceps', 'Cable', [], ['distensioni orizzontali cavo medio']),
+
   strength('barbell-bench-press', 'Barbell Bench Press', 'Chest', 'Barbell', ['Triceps', 'Shoulders'], ['bench press', 'flat bench']),
   strength('incline-bench-press', 'Incline Barbell Bench Press', 'Chest', 'Barbell', ['Shoulders', 'Triceps'], ['incline bench']),
   strength('dumbbell-bench-press', 'Dumbbell Bench Press', 'Chest', 'Dumbbell', ['Triceps', 'Shoulders'], ['db bench']),
@@ -67,16 +75,16 @@ export const EXERCISE_CATALOG: readonly Exercise[] = [
   strength('cable-lateral-raise', 'Cable Lateral Raise', 'Shoulders', 'Cable', [], []),
   strength('reverse-pec-deck', 'Reverse Pec Deck', 'Shoulders', 'Machine', ['Back'], ['rear delt fly']),
   strength('face-pull', 'Face Pull', 'Shoulders', 'Cable', ['Back'], []),
-  strength('upright-row', 'Upright Row', 'Shoulders', 'Barbell', ['Traps'], []),
+  strength('upright-row', 'Upright Row', 'Shoulders', 'Barbell', ['Traps'], ['tirate al mento bilanciere EZ', 'EZ bar upright row']),
   strength('barbell-shrug', 'Barbell Shrug', 'Traps', 'Barbell', [], ['shrugs']),
 
   strength('barbell-curl', 'Barbell Curl', 'Biceps', 'Barbell', ['Forearms'], ['bicep curl']),
-  strength('dumbbell-curl', 'Dumbbell Curl', 'Biceps', 'Dumbbell', ['Forearms'], ['db curl']),
-  strength('hammer-curl', 'Hammer Curl', 'Biceps', 'Dumbbell', ['Forearms'], []),
+  strength('dumbbell-curl', 'Dumbbell Curl', 'Biceps', 'Dumbbell', ['Forearms'], ['db curl', 'alternating dumbbell curl', 'curl manubri alternato']),
+  strength('hammer-curl', 'Hammer Curl', 'Biceps', 'Dumbbell', ['Forearms'], ['alternating hammer curl', 'hammer curl manubri alternato']),
   strength('preacher-curl', 'Preacher Curl', 'Biceps', 'Machine', [], []),
   strength('cable-curl', 'Cable Curl', 'Biceps', 'Cable', [], []),
   strength('close-grip-bench', 'Close-Grip Bench Press', 'Triceps', 'Barbell', ['Chest'], ['close grip bench']),
-  strength('triceps-pushdown', 'Triceps Pushdown', 'Triceps', 'Cable', [], ['rope pushdown']),
+  strength('triceps-pushdown', 'Triceps Pushdown', 'Triceps', 'Cable', [], ['rope pushdown', 'push down corda']),
   strength('overhead-triceps-extension', 'Overhead Triceps Extension', 'Triceps', 'Cable', [], []),
   strength('skull-crusher', 'EZ-Bar Skull Crusher', 'Triceps', 'Barbell', [], ['lying triceps extension']),
   strength('bench-dip', 'Bench Dip', 'Triceps', 'Bodyweight', ['Chest'], []),

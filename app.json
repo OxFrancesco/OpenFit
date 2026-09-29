@@ -27,7 +27,7 @@
     },
     "android": {
       "package": "com.francescooddo.fitty",
-      "versionCode": 8,
+      "versionCode": 9,
       "adaptiveIcon": {
         "backgroundColor": "#FFFFFF",
         "foregroundImage": "./assets/images/android-icon-foreground.png",

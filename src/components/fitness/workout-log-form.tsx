@@ -24,6 +24,11 @@ import {
 } from '@/lib/fitness-domain';
 import { getExerciseById, listWorkoutLogsForExercise, saveWorkoutLog } from '@/lib/fitness-store';
 
+function parsePlannedCount(value: string | undefined, max: number) {
+  const count = Number(value);
+  return Number.isInteger(count) && count >= 1 && count <= max ? String(count) : undefined;
+}
+
 function parseNumber(value: string) {
   const parsed = Number(value.trim().replace(',', '.'));
   return Number.isFinite(parsed) ? parsed : Number.NaN;
@@ -36,12 +41,14 @@ function displayInputNumber(value: number) {
 
 export function WorkoutLogForm() {
   const theme = useTheme();
-  const params = useLocalSearchParams<{ exerciseId?: string | string[]; scheduleNotes?: string }>();
+  const params = useLocalSearchParams<{ exerciseId?: string | string[]; scheduleNotes?: string; plannedSets?: string; plannedReps?: string }>();
   const exerciseId = Array.isArray(params.exerciseId) ? params.exerciseId[0] : params.exerciseId;
   const [exercise, setExercise] = useState<Exercise | null>(null);
   const [exerciseLogs, setExerciseLogs] = useState<WorkoutLog[]>([]);
-  const [sets, setSets] = useState('3');
-  const [reps, setReps] = useState('8');
+  const plannedSets = parsePlannedCount(params.plannedSets, 99);
+  const plannedReps = parsePlannedCount(params.plannedReps, 999);
+  const [sets, setSets] = useState(plannedSets ?? '3');
+  const [reps, setReps] = useState(plannedReps ?? '8');
   const [weight, setWeight] = useState('');
   const [unit, setUnit] = useState<WeightUnit>('kg');
   const [notes, setNotes] = useState(() => typeof params.scheduleNotes === 'string' ? params.scheduleNotes.slice(0, 500) : '');
@@ -64,8 +71,8 @@ export function WorkoutLogForm() {
         setExerciseLogs(matchingLogs);
 
         if (previous) {
-          setSets(String(previous.sets));
-          setReps(String(previous.reps));
+          setSets(plannedSets ?? String(previous.sets));
+          setReps(plannedReps ?? String(previous.reps));
           setUnit(previous.enteredUnit);
           setWeight(displayInputNumber(fromKilograms(previous.weightKg, previous.enteredUnit)));
         }
@@ -82,7 +89,7 @@ export function WorkoutLogForm() {
     return () => {
       active = false;
     };
-  }, [exerciseId]);
+  }, [exerciseId, plannedSets, plannedReps]);
 
   const bestKg = useMemo(
     () => (exercise ? personalBestKg(exerciseLogs, exercise.id) : 0),

@@ -55,10 +55,12 @@ The [health agent](workers/health-agent/README.md) uses the personal Cloudflare 
 
 ## Workout schedules
 
-Open **Workouts → My schedule** and paste a schedule or select a JPEG, PNG, WebP, or PDF up to 8 MB. Choose the output language, then select **Read schedule**. Sign-in is required for analysis. Review the exercises, correct uncertain matches, and save the schedule on this device. **Log workout** carries the trainer's prescription into the workout notes; it does not mark planned sets as completed.
+Open **Workouts → Schedules → New schedule** and paste a schedule or select a JPEG, PNG, WebP, or PDF up to 8 MB. Choose the output language, then select **Import schedule**. Sign-in is required for analysis. Imports save automatically on this device. Each plan has reusable workout days, and **Build manually** lets you create a template without AI. **Edit schedule** changes prescriptions, adds days and exercises, or removes entries. The previous single saved schedule migrates into this library.
+
+**Log workout** opens immediately for matched strength exercises, prefills fixed sets and reps, and carries the trainer's prescription and rest instructions into notes. Review the actual weight and reps before saving a completed workout. Cardio, mobility, and stretching stay in day order as instructions. Reimport an older plan to apply the improved PDF extraction and matching.
 
 The server uses `OPENROUTER_API_KEY`, `openai/gpt-6-luna` for reading and translation, and `~typesafe/jev-latest` through OpenRouter's Decisions API for catalog matching. Keep the key in `.env.local` and the Expo project's sensitive production environment. Never use an `EXPO_PUBLIC_` key variable. The configured OpenFit key has a $5 total cap.
 
-Extraction keeps original names, translated names, days, prescriptions, and warnings. JEV sees the full exercise catalog and has a no-match option. Matches below 0.8 choice probability or 0.7 confidence require manual selection. These are conservative starting thresholds, not calibrated accuracy guarantees. Up to 60 exercise entries are supported. New native builds are required for `expo-document-picker`.
+Extraction keeps original names, translated names, days, muscle columns, prescriptions, and shared rest instructions. Unique catalog names and aliases match locally. JEV handles remaining strength entries in one request with the full exercise catalog and a no-match option. Matches below 0.8 choice probability or 0.7 confidence require manual selection. These are conservative starting thresholds, not calibrated accuracy guarantees. Up to 60 entries per plan and 100 saved plans are supported. New native builds are required for `expo-document-picker`.
 
 Run `bun test src/lib/workout-schedule.test.js` for regression checks. `bun scripts/verify-workout-import.js [path-to-png-or-pdf]` makes paid provider calls using a synthetic Italian schedule and expects bench press, lat pulldown, and back squat in that order.

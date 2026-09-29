@@ -6,11 +6,12 @@ import { Platform ,
   StyleSheet,
   View,
 } from 'react-native';
-import { Button, Chip, Searchbar, SegmentedButtons } from 'react-native-paper';
+import { Chip, Searchbar, SegmentedButtons } from 'react-native-paper';
 import { router, useFocusEffect, useLocalSearchParams, type Href } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Animated, { FadeIn, FadeInDown, LinearTransition } from 'react-native-reanimated';
 
+import { ScheduleLibrary } from '@/components/fitness/schedule-library';
 import { DeviceWorkouts } from '@/components/fitness/device-workouts';
 import { MetricIcon } from '@/components/metric-icon';
 import { ThemedText } from '@/components/themed-text';
@@ -38,12 +39,13 @@ import {
 } from '@/lib/fitness-store';
 import { clerkSession } from '@/lib/clerk-session';
 
-type FitnessSection = 'exercises' | 'history' | 'connections';
+type FitnessSection = 'exercises' | 'schedules' | 'history' | 'connections';
 
 const DEVICE_WORKOUT_DAYS = 7;
 
 const SECTIONS: { id: FitnessSection; label: string }[] = [
   { id: 'exercises', label: 'Exercises' },
+  { id: 'schedules', label: 'Schedules' },
   { id: 'history', label: 'History' },
   { id: 'connections', label: 'Connections' },
 ];
@@ -162,11 +164,14 @@ export function FitnessScreen() {
           volumeKg={stats.volumeKg}
         /> : null}
 
-        <SegmentedButtons
-          value={section}
-          onValueChange={value => { const item = SECTIONS.find(option => option.id === value); if (item) setSection(item.id); }}
-          buttons={SECTIONS.map(item => ({ value: item.id, label: item.label }))}
-        />
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1 }}>
+          <SegmentedButtons
+            style={{ flex: 1 }}
+            value={section}
+            onValueChange={value => { const item = SECTIONS.find(option => option.id === value); if (item) setSection(item.id); }}
+            buttons={SECTIONS.map(item => ({ value: item.id, label: item.label, style: { minWidth: 120 } }))}
+          />
+        </ScrollView>
 
         {errorMessages.length ? (
           <View accessibilityRole="alert" style={styles.errorBanner}>
@@ -181,7 +186,6 @@ export function FitnessScreen() {
 
         {section === 'exercises' ? (
           <>
-          <Button mode="outlined" icon="calendar" onPress={() => router.push('/workout-schedule')}>My schedule</Button>
           <ExerciseLibrary
             query={query}
             onChangeQuery={setQuery}
@@ -192,6 +196,8 @@ export function FitnessScreen() {
           />
           </>
         ) : null}
+
+        {section === 'schedules' ? <ScheduleLibrary /> : null}
 
         {section === 'history' ? (
           <>
