@@ -27,7 +27,7 @@
     },
     "android": {
       "package": "com.francescooddo.fitty",
-      "versionCode": 9,
+      "versionCode": 10,
       "adaptiveIcon": {
         "backgroundColor": "#FFFFFF",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -514,6 +514,18 @@
               "targetCellHeight": 2,
               "updatePeriodMillis": 1800000,
               "resizeMode": "horizontal|vertical"
+            },
+            {
+              "name": "WorkoutToday",
+              "label": "Workout today",
+              "description": "Today's plan, your week and one-tap logging",
+              "previewImage": "./assets/widget-preview/workout-today.png",
+              "minWidth": "180dp",
+              "minHeight": "110dp",
+              "targetCellWidth": 4,
+              "targetCellHeight": 2,
+              "updatePeriodMillis": 1800000,
+              "resizeMode": "horizontal|vertical"
             }
           ]
         }
@@ -549,6 +561,7 @@
       "./plugins/with-widget-bundle-inputs",
       "react-native-health-connect",
       "./plugins/with-health-rationale",
+      "./plugins/with-app-shortcuts",
       "expo-sharing"
     ],
     "experiments": {

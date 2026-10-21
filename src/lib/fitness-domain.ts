@@ -17,6 +17,13 @@ export type ExerciseFilters = {
 
 export type WeightUnit = 'kg' | 'lb';
 
+/** Which saved schedule entry a log or check-in completes. */
+export type ScheduleLink = {
+  scheduleId: string;
+  scheduleDay: string;
+  entryKey: string;
+};
+
 export type WorkoutLog = {
   id: string;
   exerciseId: string;
@@ -26,9 +33,21 @@ export type WorkoutLog = {
   weightKg: number;
   enteredUnit: WeightUnit;
   notes: string;
+  schedule?: ScheduleLink | null;
 };
 
 export type WorkoutLogInput = Omit<WorkoutLog, 'id'> & { id?: string };
+
+/** Completion of a cardio, mobility, or stretching schedule entry. */
+export type ScheduleCheckin = {
+  id: string;
+  schedule: ScheduleLink;
+  name: string;
+  kind: 'strength' | 'cardio' | 'mobility' | 'stretching';
+  performedAt: string;
+};
+
+export type ScheduleCheckinInput = Omit<ScheduleCheckin, 'id'> & { id?: string };
 
 const POUNDS_PER_KILOGRAM = 2.2046226218;
 
@@ -126,6 +145,11 @@ export function validateWorkoutInput(input: Omit<WorkoutLogInput, 'exerciseId' |
   return null;
 }
 
+/** Epley estimate; a single rep is the lifted weight itself. */
+export function estimatedOneRepMaxKg(weightKg: number, reps: number) {
+  return reps <= 1 ? weightKg : weightKg * (1 + reps / 30);
+}
+
 export function personalBestKg(logs: readonly WorkoutLog[], exerciseId: string) {
   return logs.reduce(
     (best, log) => (log.exerciseId === exerciseId ? Math.max(best, log.weightKg) : best),
@@ -157,6 +181,33 @@ export function isWorkoutLog(value: unknown): value is WorkoutLog {
     log.weightKg <= 1_000 &&
     (log.enteredUnit === 'kg' || log.enteredUnit === 'lb') &&
     typeof log.notes === 'string' &&
-    log.notes.length <= 500
+    log.notes.length <= 500 &&
+    (log.schedule === undefined || log.schedule === null || isScheduleLink(log.schedule))
+  );
+}
+
+export function isScheduleLink(value: unknown): value is ScheduleLink {
+  if (!value || typeof value !== 'object') return false;
+  const link = value as Partial<ScheduleLink>;
+  return (
+    typeof link.scheduleId === 'string' &&
+    link.scheduleId.length > 0 &&
+    typeof link.scheduleDay === 'string' &&
+    typeof link.entryKey === 'string' &&
+    link.entryKey.length > 0
+  );
+}
+
+export function isScheduleCheckin(value: unknown): value is ScheduleCheckin {
+  if (!value || typeof value !== 'object') return false;
+  const checkin = value as Partial<ScheduleCheckin>;
+  return (
+    typeof checkin.id === 'string' &&
+    checkin.id.length > 0 &&
+    isScheduleLink(checkin.schedule) &&
+    typeof checkin.name === 'string' &&
+    ['strength', 'cardio', 'mobility', 'stretching'].includes(String(checkin.kind)) &&
+    typeof checkin.performedAt === 'string' &&
+    Number.isFinite(Date.parse(checkin.performedAt))
   );
 }

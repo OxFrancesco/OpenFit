@@ -13,6 +13,7 @@ import { healthSourceName } from '@/lib/health-source';
 export function DeviceWorkouts({ state, days }: { state: DeviceWorkoutsState; days: number }) {
   const theme = useTheme();
   if (state.kind === 'unavailable') return null;
+  if (state.kind !== 'error' && !state.workouts.length) return null;
 
   return (
     <Animated.View entering={FadeIn.duration(180)} style={styles.section}>
@@ -27,13 +28,9 @@ export function DeviceWorkouts({ state, days }: { state: DeviceWorkoutsState; da
           {state.message}
         </ThemedText>
       ) : null}
-      {state.workouts.length ? (
-        state.workouts.map((workout) => <DeviceWorkoutRow key={workout.id} workout={workout} />)
-      ) : state.kind === 'loaded' ? (
-        <ThemedText type="small" style={{ color: theme.textSecondary }}>
-          No workouts recorded on this phone in the last {days} days.
-        </ThemedText>
-      ) : null}
+      {state.workouts.map((workout) => (
+        <DeviceWorkoutRow key={workout.id} workout={workout} />
+      ))}
     </Animated.View>
   );
 }

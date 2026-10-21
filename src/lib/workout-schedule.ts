@@ -51,13 +51,30 @@ export function scheduleDays(schedule: WorkoutSchedule) {
   return [...new Set(schedule.entries.map(entry => entry.day || 'Workout'))];
 }
 
-export function scheduleLogParams(entry: MatchedScheduleEntry, dayNotes = '') {
+function plannedLogParams(entry: MatchedScheduleEntry) {
   const setsAndReps = entry.prescription.match(/(?:^|\s)(\d{1,2})\s*[x×]\s*(\d{1,3})(?!\d)/i);
   const repsAreRange = setsAndReps && /^\s*[-–]/.test(entry.prescription.slice((setsAndReps.index ?? 0) + setsAndReps[0].length));
   return {
     exerciseId: entry.exerciseId ?? '',
-    scheduleNotes: [entry.day, entry.originalName, entry.prescription, dayNotes, entry.notes].filter(Boolean).join(' · ').slice(0, 500),
     ...(setsAndReps ? { plannedSets: setsAndReps[1] } : {}),
     ...(setsAndReps && !repsAreRange ? { plannedReps: setsAndReps[2] } : {}),
+    ...(entry.prescription.trim() ? { prescription: entry.prescription.trim() } : {}),
+  };
+}
+
+export function scheduleLogParams(entry: MatchedScheduleEntry, dayNotes = '') {
+  return {
+    ...plannedLogParams(entry),
+    scheduleNotes: [entry.day, entry.originalName, entry.prescription, dayNotes, entry.notes].filter(Boolean).join(' · ').slice(0, 500),
+  };
+}
+
+/** /log-workout params that also record which schedule entry the log completes. */
+export function scheduleEntryLogParams(entry: MatchedScheduleEntry, link: { scheduleId: string; entryKey: string }) {
+  return {
+    ...plannedLogParams(entry),
+    scheduleId: link.scheduleId,
+    scheduleDay: entry.day || 'Workout',
+    entryKey: link.entryKey,
   };
 }

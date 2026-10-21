@@ -35,3 +35,16 @@ for (const [platform, file] of [
     });
   });
 }
+
+for (const [platform, file] of [
+  ["android", "training-widget-sync.android.ts"],
+  ["ios", "training-widget-sync.ts"],
+  ["web", "training-widget-sync.ts"],
+]) {
+  test(`${platform} resolves the correct training widget sync with the real Metro resolver`, () => {
+    expect(resolve(context, "../lib/training-widget-sync", platform)).toEqual({
+      type: "sourceFile",
+      filePath: pathResolve(root, "src/lib", file),
+    });
+  });
+}

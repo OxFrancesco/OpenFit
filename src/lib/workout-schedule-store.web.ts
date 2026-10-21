@@ -3,6 +3,7 @@ import type { WorkoutSchedule } from './workout-schedule';
 
 const KEY = 'openfit.workout-schedules.v2';
 const LEGACY_KEY = 'openfit.workout-schedule.v1';
+const ACTIVE_KEY = 'openfit.training-active-schedule.v1';
 export async function loadScheduleLibrary() {
   if (typeof localStorage === 'undefined') return [];
   return readScheduleLibrary(localStorage.getItem(KEY), localStorage.getItem(LEGACY_KEY));
@@ -12,4 +13,13 @@ export async function saveScheduleTemplate(id: string, schedule: WorkoutSchedule
 }
 export async function deleteScheduleTemplate(id: string) {
   localStorage.setItem(KEY, JSON.stringify((await loadScheduleLibrary()).filter(item => item.id !== id)));
+}
+export async function loadActiveScheduleId() {
+  if (typeof localStorage === 'undefined') return null;
+  return localStorage.getItem(ACTIVE_KEY);
+}
+export async function saveActiveScheduleId(id: string | null) {
+  if (typeof localStorage === 'undefined') return;
+  if (id) localStorage.setItem(ACTIVE_KEY, id);
+  else localStorage.removeItem(ACTIVE_KEY);
 }

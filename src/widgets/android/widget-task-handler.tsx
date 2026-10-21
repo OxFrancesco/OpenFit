@@ -6,6 +6,7 @@ import {
   renderAndroidWidget,
   widgetMetricCount,
 } from "./sync";
+import { handleTrainingWidgetTask, TRAINING_WIDGET_NAME } from "./training-widget";
 import {
   deleteWidgetPreferences,
   loadWidgetPreferences,
@@ -13,6 +14,10 @@ import {
 
 export async function widgetTaskHandler(props: WidgetTaskHandlerProps) {
   const info = props.widgetInfo;
+  if (info.widgetName === TRAINING_WIDGET_NAME) {
+    await handleTrainingWidgetTask(props);
+    return;
+  }
   if (!isAndroidWidgetName(info.widgetName)) return;
   if (props.widgetAction === "WIDGET_DELETED") {
     await deleteWidgetPreferences(info.widgetId);

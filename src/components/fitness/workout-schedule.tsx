@@ -1,24 +1,41 @@
 import * as DocumentPicker from 'expo-document-picker';
 import * as Crypto from 'expo-crypto';
 import { File } from 'expo-file-system';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams, type Href } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Platform, ScrollView, StyleSheet, View } from 'react-native';
-import { Button, Dialog, HelperText, List, Portal, Searchbar, TextInput } from 'react-native-paper';
+import { Button, Chip, Dialog, HelperText, List, Portal, Searchbar, TextInput } from 'react-native-paper';
 import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
 import { fetchApiJson } from '@/lib/api-base';
 import { clerkAuthHeaders } from '@/lib/clerk-session';
 import { EXERCISE_CATALOG, getCatalogExercise } from '@/lib/exercise-catalog';
 import { searchExercises, type Exercise } from '@/lib/fitness-domain';
-import { MAX_SCHEDULE_BYTES, scheduleDays, scheduleEntryKind, scheduleInputSchema, scheduleLogParams, workoutScheduleSchema, type ScheduleInput, type WorkoutSchedule } from '@/lib/workout-schedule';
-import { deleteScheduleTemplate, loadScheduleLibrary, saveScheduleTemplate } from '@/lib/workout-schedule-store';
+import { latestScheduleActivity } from '@/lib/fitness-store';
+import { pickPlanDay, scheduleEntryKeys } from '@/lib/training-plan';
+import { syncTrainingWidgets } from '@/lib/training-widget-sync';
+import { MAX_SCHEDULE_BYTES, scheduleDays, scheduleEntryKind, scheduleEntryLogParams, scheduleInputSchema, workoutScheduleSchema, type MatchedScheduleEntry, type ScheduleInput, type WorkoutSchedule } from '@/lib/workout-schedule';
+import { deleteScheduleTemplate, loadActiveScheduleId, loadScheduleLibrary, saveActiveScheduleId, saveScheduleTemplate } from '@/lib/workout-schedule-store';
 
 type Choice = { kind: 'replace'; index: number } | { kind: 'add' };
+const syncWidgets = () => { void syncTrainingWidgets().catch(() => undefined); };
+const openingDay = async (id: string, schedule: WorkoutSchedule, wanted?: string) => {
+  const days = scheduleDays(schedule);
+  if (wanted && days.includes(wanted)) return wanted;
+  const latest = await latestScheduleActivity(id).catch(() => null);
+  return pickPlanDay(schedule, latest, new Date())?.day ?? days[0];
+};
+const alternativesOf = (entry: MatchedScheduleEntry) =>
+  entry.alternatives.flatMap(item => { const exercise = getCatalogExercise(item.exerciseId); return exercise ? [exercise] : []; }).slice(0, 3);
+function closeScreen() {
+  if (router.canGoBack()) router.back();
+  else router.replace('/fitness?section=plans' as Href);
+}
 export function WorkoutScheduleScreen() {
   const theme = useTheme();
-  const params = useLocalSearchParams<{ id?: string; create?: string }>();
+  const params = useLocalSearchParams<{ id?: string; create?: string; day?: string }>();
   const [id, setId] = useState(() => params.id || Crypto.randomUUID());
+  const [isNew, setIsNew] = useState(true);
   const [schedule, setSchedule] = useState<WorkoutSchedule | null>(null);
   const [day, setDay] = useState('');
   const [text, setText] = useState('');
@@ -35,14 +52,19 @@ export function WorkoutScheduleScreen() {
   const [removing, setRemoving] = useState(false);
   useEffect(() => {
     let active = true;
-    loadScheduleLibrary().then(items => {
-      if (!active || params.create) return;
-      const existing = params.id ? items.find(item => item.id === params.id) : items[0];
-      if (existing) { setId(existing.id); setSchedule(existing.schedule); setDay(scheduleDays(existing.schedule)[0]); }
-    }).catch(() => { if (active) setError('Could not load your saved schedules.'); })
+    const load = async () => {
+      if (params.create) return;
+      const [items, activeId] = await Promise.all([loadScheduleLibrary(), loadActiveScheduleId()]);
+      const existing = params.id ? items.find(item => item.id === params.id) : items.find(item => item.id === activeId) ?? items[0];
+      if (!existing) return;
+      const firstDay = await openingDay(existing.id, existing.schedule, params.day);
+      if (!active) return;
+      setId(existing.id); setIsNew(false); setSchedule(existing.schedule); setDay(firstDay);
+    };
+    load().catch(() => { if (active) setError('Could not load your saved schedules.'); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [params.id, params.create]);
+  }, [params.id, params.create, params.day]);
   const busy = operation !== 'idle' || loading;
   const days = schedule ? scheduleDays(schedule) : [];
   const selectedDay = day || days[0] || 'Workout A';
@@ -51,7 +73,11 @@ export function WorkoutScheduleScreen() {
     setSchedule(next); setUnsaved(true); setError('');
     if (!next.entries.length) return;
     setOperation('saving');
-    try { await saveScheduleTemplate(id, next); setUnsaved(false); }
+    try {
+      await saveScheduleTemplate(id, next); setUnsaved(false);
+      if (isNew) { await saveActiveScheduleId(id).catch(() => undefined); setIsNew(false); }
+      syncWidgets();
+    }
     catch { setError('Could not save on this device. Your schedule is still open; try saving again.'); }
     finally { setOperation('idle'); }
   };
@@ -75,7 +101,7 @@ export function WorkoutScheduleScreen() {
       const input = scheduleInputSchema.parse({ text, language, attachment });
       const result = await fetchApiJson<unknown>('/api/workouts/import', { method: 'POST', headers: { ...(await clerkAuthHeaders()), 'Content-Type': 'application/json' }, body: JSON.stringify(input) });
       const next = workoutScheduleSchema.parse(result);
-      setDay(scheduleDays(next)[0]);
+      setDay(pickPlanDay(next, null, new Date())?.day ?? scheduleDays(next)[0]);
       await persist(next);
       setAttachment(undefined); setText('');
     } catch (caught) { setError(caught instanceof Error ? caught.message : 'Could not read the schedule.'); }
@@ -89,6 +115,20 @@ export function WorkoutScheduleScreen() {
     setChoice(null); setQuery('');
     await persist(next);
   };
+  const match = (index: number, exerciseId: string) => {
+    if (!schedule) return;
+    void persist({ ...schedule, entries: schedule.entries.map((entry, i) => i === index ? { ...entry, exerciseId } : entry) });
+  };
+  const remove = async () => {
+    try {
+      await deleteScheduleTemplate(id);
+      if ((await loadActiveScheduleId()) === id) await saveActiveScheduleId(null);
+      syncWidgets();
+      setRemoving(false); closeScreen();
+    }
+    catch { setRemoving(false); setError('Could not delete the schedule.'); }
+  };
+  const entryKeys = schedule ? scheduleEntryKeys(schedule) : [];
   const finishEditing = async () => {
     if (!schedule) return;
     if (!schedule.title.trim() || !schedule.entries.length) { setError('Add a name and at least one exercise.'); return; }
@@ -115,8 +155,13 @@ export function WorkoutScheduleScreen() {
           <Button disabled={busy} onPress={() => editing ? void finishEditing() : setEditing(true)}>{editing ? 'Done editing' : 'Edit schedule'}</Button>
           {unsaved && !editing && schedule.entries.length ? <Button onPress={() => persist(schedule)} disabled={busy}>Retry save</Button> : null}
         </View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
-          {[...new Set([...days, selectedDay])].map(name => <Button key={name} mode={selectedDay === name ? 'contained' : 'outlined'} onPress={() => setDay(name)} accessibilityState={{ selected: selectedDay === name }}>{name}</Button>)}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.days}>
+          {[...new Set([...days, selectedDay])].map(name => {
+            const selected = selectedDay === name;
+            return <Chip key={name} mode={selected ? 'flat' : 'outlined'} selected={selected} showSelectedCheck={false}
+              onPress={() => setDay(name)} accessibilityLabel={name} accessibilityState={{ selected }}
+              hitSlop={{ top: 8, bottom: 8 }}>{name}</Chip>;
+          })}
         </ScrollView>
         {dayNotes ? <ThemedText type="small" style={{ color: theme.textSecondary }}>{dayNotes}</ThemedText> : null}
         {schedule.warnings.map((warning, index) => <ThemedText key={index} type="small">{warning}</ThemedText>)}
@@ -124,14 +169,17 @@ export function WorkoutScheduleScreen() {
           if ((entry.day || 'Workout') !== selectedDay) return null;
           const exercise = entry.exerciseId ? getCatalogExercise(entry.exerciseId) : null;
           const strength = scheduleEntryKind(entry) === 'strength';
+          const alternatives = strength && !exercise ? alternativesOf(entry) : [];
           return <View key={index} style={[styles.entry, { borderBottomColor: theme.textSecondary }]}>
             <ThemedText type="smallBold">{entry.displayName}</ThemedText>
             {entry.originalName !== entry.displayName ? <ThemedText type="small" style={{ color: theme.textSecondary }}>{entry.originalName}</ThemedText> : null}
             {editing ? <TextInput mode="outlined" label={`Prescription for ${entry.displayName}`} value={entry.prescription} maxLength={600} onChangeText={prescription => { setSchedule({ ...schedule, entries: schedule.entries.map((item, i) => i === index ? { ...item, prescription } : item) }); setUnsaved(true); }} /> : entry.prescription ? <ThemedText>{entry.prescription}</ThemedText> : null}
             {entry.notes ? <ThemedText type="small">{entry.notes}</ThemedText> : null}
-            {strength && exercise && exercise.name.toLocaleLowerCase() !== entry.displayName.toLocaleLowerCase() ? <ThemedText type="small" style={{ color: theme.textSecondary }}>Logging as {exercise.name}</ThemedText> : null}
+            {strength && exercise && ![entry.displayName, entry.originalName].some(name => name.toLocaleLowerCase() === exercise.name.toLocaleLowerCase()) ? <ThemedText type="small" style={{ color: theme.textSecondary }}>Logging as {exercise.name}</ThemedText> : null}
             {strength ? <View style={styles.row}>
-              {exercise ? <Button mode="contained" disabled={busy} onPress={() => router.push({ pathname: '/log-workout', params: scheduleLogParams(entry, dayNotes) })}>Log workout</Button> : <ThemedText type="small">Choose a catalog exercise to log this movement.</ThemedText>}
+              {exercise ? <Button mode="contained" disabled={busy} onPress={() => router.push({ pathname: '/log-workout', params: scheduleEntryLogParams(entry, { scheduleId: id, entryKey: entryKeys[index] }) })}>Log</Button> : null}
+              {alternatives.map(option => <Chip key={option.id} mode="outlined" disabled={busy} onPress={() => match(index, option.id)}
+                accessibilityLabel={`Log ${entry.displayName} as ${option.name}`} hitSlop={{ top: 8, bottom: 8 }}>{option.name}</Chip>)}
               <Button disabled={busy} onPress={() => { setChoice({ kind: 'replace', index }); setQuery(''); }}>{exercise ? 'Change exercise' : 'Choose exercise'}</Button>
             </View> : null}
             {editing && schedule.entries.length > 1 ? <Button disabled={busy} onPress={() => persist({ ...schedule, entries: schedule.entries.filter((_, i) => i !== index) })}>Remove</Button> : null}
@@ -159,10 +207,7 @@ export function WorkoutScheduleScreen() {
       <Dialog visible={removing} onDismiss={() => setRemoving(false)}>
         <Dialog.Title>Delete this schedule?</Dialog.Title>
         <Dialog.Content><ThemedText>Your logged workouts will stay in History.</ThemedText></Dialog.Content>
-        <Dialog.Actions><Button onPress={() => setRemoving(false)}>Cancel</Button><Button onPress={async () => {
-          try { await deleteScheduleTemplate(id); setRemoving(false); router.back(); }
-          catch { setRemoving(false); setError('Could not delete the schedule.'); }
-        }}>Delete</Button></Dialog.Actions>
+        <Dialog.Actions><Button onPress={() => setRemoving(false)}>Cancel</Button><Button onPress={() => void remove()}>Delete</Button></Dialog.Actions>
       </Dialog>
     </Portal>
   </>;
@@ -170,5 +215,6 @@ export function WorkoutScheduleScreen() {
 const styles = StyleSheet.create({
   container: { padding: 20, gap: 16, maxWidth: 720, width: '100%', alignSelf: 'center', paddingBottom: 48 },
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignItems: 'center' },
+  days: { flexDirection: 'row', gap: 8, alignItems: 'center', paddingVertical: 8 },
   entry: { gap: 8, paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth },
 });

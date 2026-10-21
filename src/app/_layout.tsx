@@ -19,6 +19,8 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 
 void clearStoredToken().catch(() => undefined);
 
+export const unstable_settings = { initialRouteName: 'index' };
+
 export default function RootLayout() {
   const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY;
   if (!publishableKey)
@@ -108,6 +110,7 @@ function AppLayout() {
               <Stack.Screen name="workout-schedule" options={{ title: 'Schedule' }} />
               <Stack.Screen name="fitness" options={{ title: 'Workouts' }} />
               <Stack.Screen name="settings" options={{ title: 'Settings' }} />
+              <Stack.Screen name="connections" options={{ title: 'Connections' }} />
               <Stack.Screen
                 name="log-workout"
                 options={{
@@ -117,7 +120,7 @@ function AppLayout() {
                     <Appbar.Action
                       icon="close"
                       accessibilityLabel="Close workout form"
-                      onPress={() => router.back()}
+                      onPress={() => (router.canGoBack() ? router.back() : router.replace('/fitness'))}
                     />
                   ),
                 }}
